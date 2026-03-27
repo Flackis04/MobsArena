@@ -1,0 +1,121 @@
+name: TestPlugin
+version: 1.0
+main: com.example.test.TestPlugin
+api-version: 1.21
+description: Super cool test plugin!
+author: Stephen
+contributors: [Brandon, Josh]
+website: https://mcworkshop.org
+softdepend: [LuckPerms, ProtocolLib, PlaceholderAPI]
+commands:
+  baltop:
+    description: Show top balances
+    usage: /baltop
+  stats:
+    description: Show player stats
+    usage: /stats [player]
+  setdata:
+    description: Set a PlayerData field for a player
+    usage: /setdata <player> <field> <value>
+  setmastery:
+    description: Set a mastery level for a player
+    usage: /setmastery <player> <mastery> <level>
+  resetvaluablemasteries:
+    description: Reset all valuable mastery progress
+    usage: /resetvaluablemasteries
+  help:
+    description: Show help
+    usage: /help
+    aliases: [mobshelp]
+  spawn:
+    description: Teleport to the mine spawn
+    usage: /spawn
+  mine:
+    description: Teleport to your mine
+    usage: /mine
+  kit:
+    description: Give a tier kit
+    usage: /kit <tier> [player]
+  miner:
+    description: Open miner GUI
+    usage: /miner
+  autominer:
+    description: Open auto miner GUI
+    usage: /autominer
+  blackmarket:
+    description: Open blackmarket GUI
+    usage: /blackmarket
+    aliases: [bm]
+  pvpshop:
+    description: Open PvP combat shop
+    usage: /pvpshop
+  upgrades:
+    description: Open upgrades GUI
+    usage: /upgrades
+  battlepass:
+    description: Open battlepass
+    usage: /battlepass
+  newplayer:
+    description: Reset new player flags
+    usage: /newplayer [player] [boolean]
+  reset:
+    usage: /reset
+  givecoins:
+    description: Dev commands
+    usage: /givecoins
+  givetokens:
+    description: Dev commands
+    usage: /givetokens
+  givedynamite:
+    description: Give dynamite
+    usage: /givedynamite <player> [amount]
+  rankup:
+    description: Open rankup GUI
+    usage: /rankup
+  togglefly:
+    description: Toggle flight
+    usage: /togglefly
+  togglepvp:
+    description: Toggle PvP mode
+    usage: /togglepvp
+  animations:
+    description: Open animation settings
+    usage: /animations
+  rebirth:
+    description: Unlock rebirth
+    usage: /rebirth
+  event:
+    description: Dev commands
+    usage: /event
+  startevent:
+    description: Start the current event
+    usage: /startevent
+  placeheadsonwall:
+    description: Place heads on wall
+    usage: /placeHeadsOnWall
+  removeheadsonwall:
+    description: Remove heads on wall
+    usage: /removeHeadsOnWall
+  minereset:
+    usage: /minereset
+  onminerpurchase:
+    description: Add 1.0x multiplier to a player
+    usage: /onMinerPurchase <player>
+  onexcavatorpurchase:
+    usage: /onexcavatorpurchase <player>
+  onnukerpurchase:
+    usage: /onnukerpurchase <player>
+  movelb:
+    usage: /movelb
+  tabdebug:
+    usage: /tabdebug
+  givediscordlinkrewards:
+    usage: /givediscordlinkrewards
+  givescroll:
+    usage: /givescroll <rarity> [amount]
+  store:
+    usage: /store
+
+permissions:
+  command.dev:
+    default: op
