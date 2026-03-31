@@ -23,13 +23,7 @@ class PickaxeListener : Listener {
         }
         if (!player.hasPermission("command.dev") && !MineManager.canBreakMineBlock(player, event.block.location)) {
             event.isCancelled = true
-            player.sendTitle(
-                TextUtil.colorize("&cTrying to steal?"),
-                TextUtil.colorize("&7Miner rank is required to mine other players' mines."),
-                0,
-                40,
-                10
-            )
+            TextUtil.showTitle(player, "&cTrying to steal?", "&7Miner Rank required", 0, 40, 10)
             return
         }
 
@@ -45,7 +39,7 @@ class PickaxeListener : Listener {
         triggerMineStrikeProcs(player, data, context.originLoc.blockY)
         breakPrimaryBlock(context)
 
-        val extraBlocksMined = BlockRemovalManager.handleBlockRemoval(
+        val extraBlockResult = BlockRemovalManager.handleBlockRemoval(
             player = player,
             block = block,
             blockQuantity = getMultiBreakBlockQuantity(
@@ -58,7 +52,13 @@ class PickaxeListener : Listener {
             )
         )
 
-        updateMiningProgress(player, data, extraBlocksMined, context.actualType)
+        SessionTimelineManager.recordMining(
+            player,
+            listOf(context.actualType) + extraBlockResult.materialsMined,
+            context.originLoc
+        )
+
+        updateMiningProgress(player, data, extraBlockResult.totalBlocksMined, context.actualType)
     }
 
     private fun activateMiningProcs(player: Player, data: PlayerData) {
@@ -66,7 +66,11 @@ class PickaxeListener : Listener {
             player = player,
             key = "oreBoost",
             isActive = data.oreBoostActive,
-            activationChance = UpgradeFormulas.getOreBoostChance(data.oreBoostLevel, data.oreBoostMaxLevel, 0.0) + MasteryManager.getActivationChanceBonus(data, "oreBoost"),
+            activationChance = MineManager.applyProcMultiplier(
+                UpgradeFormulas.getOreBoostChance(data.oreBoostLevel, data.oreBoostMaxLevel, 0.0) +
+                    MasteryManager.getActivationChanceBonus(data, "oreBoost"),
+                player
+            ),
             activationMessage = "&dOre Boost activated for 5 seconds!",
             durationTicks = 20L * 5L,
             activate = { data.oreBoostActive = true },
@@ -77,7 +81,11 @@ class PickaxeListener : Listener {
             player = player,
             key = "excavator",
             isActive = data.excavatorActive,
-            activationChance = UpgradeFormulas.getExcavatorChance(data.excavatorLevel, data.excavatorMaxLevel, 0.0) + MasteryManager.getActivationChanceBonus(data, "excavator"),
+            activationChance = MineManager.applyProcMultiplier(
+                UpgradeFormulas.getExcavatorChance(data.excavatorLevel, data.excavatorMaxLevel, 0.0) +
+                    MasteryManager.getActivationChanceBonus(data, "excavator"),
+                player
+            ),
             activationMessage = "&dExcavator activated for 15 seconds!",
             durationTicks = 20L * 15L,
             activate = { data.excavatorActive = true },
@@ -145,22 +153,39 @@ class PickaxeListener : Listener {
     }
 
     private fun breakPrimaryBlock(context: BreakContext) {
+        val onBreak = {
+            BlockRemovalManager.playMiningFeedback(
+                player = context.player,
+                blockType = context.actualType,
+                location = context.originLoc,
+                blockData = context.blockData,
+                oreBoostActive = DataStore.get(context.player.uniqueId).oreBoostActive,
+                excavatorActive = DataStore.get(context.player.uniqueId).excavatorActive
+            )
+            BlockRemovalManager.announceRareFind(context.player, context.actualType)
+            BlockRemovalManager.deliverDrops(context.player, context.drops, context.originLoc)
+            ExperienceManager.giveValuableExperience(context.player, context.actualType)
+            if (context.actualType in MineManager.valuables) {
+                TutorialManager.handleValuableBreak(context.player)
+            }
+            if (context.actualType in MineManager.mineableBlocks) {
+                ScrollManager.tryAwardMiningScroll(context.player)
+            }
+        }
+        if (context.actualType == Material.TRIAL_SPAWNER) {
+            context.block.type = Material.AIR
+            MineManager.removeStoredOre(context.originLoc)
+            MineManager.revealExposedBlocks(context.block)
+            onBreak()
+            return
+        }
+
         AnimationManager.breakBlock(
             player = context.player,
             loc = context.originLoc,
             material = context.actualType,
             blockData = context.blockData,
-            onStart = {
-                BlockRemovalManager.announceRareFind(context.player, context.actualType)
-                BlockRemovalManager.deliverDrops(context.player, context.drops, context.originLoc)
-                ExperienceManager.giveValuableExperience(context.player, context.actualType)
-                if (context.actualType in MineManager.valuables) {
-                    TutorialManager.handleValuableBreak(context.player)
-                }
-                if (context.actualType in MineManager.mineableBlocks) {
-                    ScrollManager.tryAwardMiningScroll(context.player)
-                }
-            }
+            onStart = onBreak
         )
     }
 
@@ -170,12 +195,13 @@ class PickaxeListener : Listener {
         }
 
         data.blocksMined += blocksMined
-        BossbarManager.blocksMinedGlobally += blocksMined
-
-        ScoreboardManager.updateBoard(player)
-        if (BossbarManager.isBlocksMinedEvent && !BossbarManager.isActive) {
-            BossbarManager.updateBlocksMinedEvent()
+        if (!TutorialManager.isTutorialMode(player)) {
+            BossbarManager.blocksMinedGlobally += blocksMined
+            if (BossbarManager.isBlocksMinedEvent && !BossbarManager.isActive) {
+                BossbarManager.updateBlocksMinedEvent()
+            }
         }
+        ScoreboardManager.updateBoard(player)
     }
 
     private fun hasCustomPickaxe(player: Player): Boolean {
@@ -205,13 +231,37 @@ class PickaxeListener : Listener {
     }
 
     private fun triggerMineStrikeProcs(player: Player, data: PlayerData, yLevel: Int) {
-        if (data.rebirth >= 1 && Random.nextDouble() <= UpgradeFormulas.getLightningChance(data.lightningLevel, data.lightningMaxLevel, ScrollManager.getBonus(data, UpgradeScrollType.LIGHTNING)) + MasteryManager.getActivationChanceBonus(data, "lightning")) {
+        val lightningChance = MineManager.applyProcMultiplier(
+            UpgradeFormulas.getLightningChance(
+                data.lightningLevel,
+                data.lightningMaxLevel,
+                ScrollManager.getBonus(data, UpgradeScrollType.LIGHTNING)
+            ) + MasteryManager.getActivationChanceBonus(data, "lightning"),
+            player
+        )
+
+        if (data.rebirth >= 1 && Random.nextDouble() <= lightningChance) {
             if (MineManager.triggerLightningUpgrade(player)) {
                 MasteryManager.recordActivation(player, "lightning")
             }
         }
 
-        if (data.rebirth >= 1 && Random.nextDouble() <= UpgradeFormulas.getVirtualJackhammerChance(data.virtualJackhammerLevel, data.virtualJackhammerMaxLevel, ScrollManager.getBonus(data, UpgradeScrollType.VIRTUAL_JACKHAMMER)) + MasteryManager.getActivationChanceBonus(data, "virtualJackhammer")) {
+        if (data.rebirth >= 1 && MineManager.isPlayersOwnMine(player, player.location)) {
+            if (LightningRodManager.tryTriggerTripleLightning(player, lightningChance)) {
+                MasteryManager.recordActivation(player, "lightning")
+            }
+        }
+
+        val virtualJackhammerChance = MineManager.applyProcMultiplier(
+            UpgradeFormulas.getVirtualJackhammerChance(
+                data.virtualJackhammerLevel,
+                data.virtualJackhammerMaxLevel,
+                ScrollManager.getBonus(data, UpgradeScrollType.VIRTUAL_JACKHAMMER)
+            ) + MasteryManager.getActivationChanceBonus(data, "virtualJackhammer"),
+            player
+        )
+
+        if (data.rebirth >= 1 && Random.nextDouble() <= virtualJackhammerChance) {
             if (MineManager.triggerVirtualJackhammer(player, yLevel)) {
                 MasteryManager.recordActivation(player, "virtualJackhammer")
             }

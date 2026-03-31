@@ -14,18 +14,23 @@ class TestPlugin : JavaPlugin() {
 
         // Initialize all managers
         DataStore.init(dataFolder)
+        ClanManager.init(dataFolder)
         LevelManager.init()
         TierManager.init()
         ItemManager.init()
-        BossbarManager.init()
+        RareOresEventManager.init()
+        BossbarManager.init(dataFolder)
+        DiscordLinkReminderManager.init()
         ActivityTracker.init()
+        ScoreboardManager.init()
         MineManager.init()
         StatsManager.init()
         DataIntegrityManager.init()
         CombatManager.init()
         AutoMinerManager.init()
+        LightningRodManager.init()
         HeadHunterManager.init()
-        RareOresEventManager.init()
+        SessionTimelineManager.init()
 
         val minerGui = OreIndexGui()
         val shopGui = BlackMarketGui()
@@ -57,31 +62,40 @@ class TestPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(StorageGuiListener(), plugin)
         server.pluginManager.registerEvents(DynamiteListener(), plugin)
         server.pluginManager.registerEvents(ScrollManager, plugin)
+        server.pluginManager.registerEvents(SessionTimelineManager, plugin)
+        server.pluginManager.registerEvents(LightningRodManager, plugin)
 
         // Commands
         getCommand("baltop")?.setExecutor(BaltopCommand())
         getCommand("stats")?.setExecutor(StatsCommand())
         getCommand("setdata")?.setExecutor(SetDataCommand())
         getCommand("setmastery")?.setExecutor(SetMasteryCommand())
+        getCommand("maxstats")?.setExecutor(MaxStatsCommand())
         getCommand("resetvaluablemasteries")?.setExecutor(ResetValuableMasteriesCommand())
         getCommand("help")?.setExecutor(MobsHelpCommand())
         getCommand("spawn")?.setExecutor(SpawnCommand())
         getCommand("mine")?.setExecutor(MineCommand())
+        getCommand("clan")?.setExecutor(ClanCommand())
+        getCommand("giveclanpoints")?.setExecutor(GiveClanPointsCommand())
+        getCommand("givelightningrod")?.setExecutor(GiveLightningRodCommand())
+        getCommand("trust")?.setExecutor(TrustCommand())
         getCommand("kit")?.setExecutor(KitCommand())
         getCommand("headhunter")?.setExecutor(HeadHunterCommand())
         getCommand("miner")?.setExecutor(MinerCommand(minerGui))
+        getCommand("oreindex")?.setExecutor(MinerCommand(minerGui))
         getCommand("autominer")?.setExecutor(AutoMinerCommand(autoMinerGui))
         getCommand("blackmarket")?.setExecutor(ShopCommand(shopGui))
+        getCommand("pay")?.setExecutor(PayCommand())
         getCommand("upgrades")?.setExecutor(PermUpgradesCommand()) // Opens openPermUpgradeGui(player)
         getCommand("battlepass")?.setExecutor(BattlepassCommand(battlepassGui))
+        getCommand("sessiontimeline")?.setExecutor(SessionTimelineManager.SessionTimelineCommand())
         getCommand("newplayer")?.setExecutor(NewPlayerCommand())
-        getCommand("noobprotection")?.setExecutor(NoobProtectionCommand())
         getCommand("reset")?.setExecutor(ResetCommand())
         getCommand("givecoins")?.setExecutor(GiveCoinsCommand())
-        getCommand("givetokens")?.setExecutor(GiveTokensCommand())
         getCommand("givedynamite")?.setExecutor(GiveDynamiteCommand())
         getCommand("rankup")?.setExecutor(RankUpCommand(rankUpGui))
         getCommand("store")?.setExecutor(StoreCommand(storeGui))
+        getCommand("ascend")?.setExecutor(AscendCommand(rankUpGui))
         getCommand("togglefly")?.setExecutor(FlyCommand())
         getCommand("animations")?.setExecutor(AnimationCommand(animationGui))
         getCommand("rebirth")?.setExecutor(RebirthCommand(rankUpGui))
@@ -99,13 +113,15 @@ class TestPlugin : JavaPlugin() {
         getCommand("onnukerpurchase")?.setExecutor(OnNukerPurchaseCommand())
         getCommand("movelb")?.setExecutor(MoveLBCommand())
         getCommand("tabdebug")?.setExecutor(TabDebugCommand())
-
         if (server.pluginManager.getPlugin("PlaceholderAPI") != null) {
             MobsArenaPlaceholderExpansion(this).register()
         }
 
         // Auto-save every minute
-        Bukkit.getScheduler().runTaskTimer(plugin, Runnable { DataStore.save() }, 1200L, 1200L)
+        Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
+            DataStore.save()
+            ClanManager.save()
+        }, 1200L, 1200L)
 
         // Broadcast the store reminder every 2 minutes.
         Bukkit.getScheduler().runTaskTimer(
@@ -115,7 +131,7 @@ class TestPlugin : JavaPlugin() {
                     TextUtil.toComponent("&dWant to support the server and gain cool features at the same time? &a/store")
                 )
             },
-            2400L,
+            1800L,
             2400L
         )
     }
@@ -123,8 +139,10 @@ class TestPlugin : JavaPlugin() {
     override fun onDisable() {
         AnimationManager.clearAll()
         BossbarManager.shutdown()
+        LightningRodManager.shutdown()
         RareOresEventManager.shutdown()
         DataStore.save()
+        ClanManager.save()
     }
 
     companion object {

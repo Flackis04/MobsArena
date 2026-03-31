@@ -198,6 +198,10 @@ class ShopGui : Listener {
             data.balance -= offer.price
             offer.stock -= 1
             player.inventory.addItem(offer.item.clone().apply { amount = offer.amount })
+            SessionTimelineManager.record(
+                player,
+                "Purchased x${offer.amount} ${offer.displayName} for ${TextUtil.formatNum(offer.price)} ${ItemManager.COIN_NAME_PLURAL}"
+            )
             player.sendMessage(
                 TextUtil.colorize(
                     "&aPurchased &7x${offer.amount} &a${offer.displayName} &afor &b${TextUtil.formatNum(offer.price)} ${ItemManager.COIN_NAME_PLURAL}&a!"

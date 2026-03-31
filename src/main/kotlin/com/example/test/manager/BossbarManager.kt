@@ -4,8 +4,10 @@ import org.bukkit.Bukkit
 import org.bukkit.boss.BarColor
 import org.bukkit.boss.BarStyle
 import org.bukkit.boss.BossBar
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
+import java.io.File
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -20,25 +22,39 @@ object BossbarManager {
     var multiplier = 1.5
     var weightMultiplier = 1.25
     var type = "GoldRush"
-    var durationSeconds = 60
+    var durationSeconds = 40
 
     var requirementBlocks = 0L
     var requirementPlayers = 70
 
     private var bar: BossBar? = null
+    private val tutorialBars = mutableMapOf<java.util.UUID, BossBar>()
     private var activeBarTask: BukkitTask? = null
+    private var eventEndTask: BukkitTask? = null
     private var activeEventEndsAtMillis = 0L
+    private lateinit var eventStateFile: File
+    private lateinit var eventStateConfig: YamlConfiguration
 
-    fun init() {
+    fun init(dataFolder: File) {
+        eventStateFile = File(dataFolder, "event-state.yml")
+        eventStateConfig = YamlConfiguration.loadConfiguration(eventStateFile)
         initEvent()
         initBossBar()
-        checkEventConditions()
+        val restored = restoreSavedActiveEvent()
+        if (!restored) {
+            checkEventConditions()
+        }
     }
 
     fun shutdown() {
+        saveState()
         activeBarTask?.cancel()
         activeBarTask = null
+        eventEndTask?.cancel()
+        eventEndTask = null
         bar?.removeAll()
+        tutorialBars.values.forEach(BossBar::removeAll)
+        tutorialBars.clear()
         bar = null
         blocksMinedGlobally = 0
         isActive = false
@@ -47,13 +63,50 @@ object BossbarManager {
     }
 
     fun addPlayer(player: Player) {
-        bar?.addPlayer(player)
-        updatePlayerCountEvent()
+        refreshPlayer(player)
+        reevaluateWaitingTrigger()
     }
 
     fun removePlayer(player: Player) {
         bar?.removePlayer(player)
-        updatePlayerCountEvent()
+        tutorialBars.remove(player.uniqueId)?.removeAll()
+        reevaluateWaitingTrigger()
+    }
+
+    fun refreshPlayer(player: Player) {
+        if (TutorialManager.isTutorialMode(player)) {
+            bar?.removePlayer(player)
+            val tutorialState = TutorialManager.getBossbar(player)
+            if (tutorialState == null) {
+                tutorialBars.remove(player.uniqueId)?.removeAll()
+                return
+            }
+            val tutorialBar = tutorialBars.getOrPut(player.uniqueId) {
+                Bukkit.createBossBar("", BarColor.WHITE, BarStyle.SOLID)
+            }
+            tutorialBar.setTitle(TextUtil.colorize(tutorialState.title))
+            tutorialBar.progress = tutorialState.progress
+            tutorialBar.color = tutorialState.color
+            tutorialBar.style = tutorialState.style
+            if (!tutorialBar.players.contains(player)) {
+                tutorialBar.addPlayer(player)
+            }
+            reevaluateWaitingTrigger()
+            return
+        }
+
+        tutorialBars.remove(player.uniqueId)?.removeAll()
+        if (!(bar?.players?.contains(player) ?: false)) {
+            bar?.addPlayer(player)
+        }
+        if (isActive) {
+            bar?.setTitle(TextUtil.colorize(getEventTitle(true)))
+        } else if (isPlayerCountEvent) {
+            updatePlayerCountEvent()
+        } else if (isBlocksMinedEvent) {
+            updateBlocksMinedEvent()
+        }
+        reevaluateWaitingTrigger()
     }
 
     private fun initEvent() {
@@ -73,12 +126,12 @@ object BossbarManager {
     private fun initBossBar() {
         bar?.removeAll()
         bar = Bukkit.createBossBar(TextUtil.colorize(getEventTitle(false)), BarColor.GREEN, BarStyle.SOLID)
-        Bukkit.getOnlinePlayers().forEach { bar?.addPlayer(it) }
+        Bukkit.getOnlinePlayers().forEach(::refreshPlayer)
         bar?.progress = 0.0
     }
 
     fun checkEventConditions() {
-        if (Bukkit.getOnlinePlayers().size >= requirementPlayers) {
+        if (getEligibleOnlinePlayerCount() >= requirementPlayers) {
             startPlayerCountEvent()
             return
         }
@@ -86,22 +139,29 @@ object BossbarManager {
     }
 
     private fun startPlayerCountEvent() {
+        isBlocksMinedEvent = false
         isPlayerCountEvent = true
         bar?.color = BarColor.BLUE
         bar?.setTitle(TextUtil.colorize("&aPlayers Online Event"))
-        Bukkit.broadcast(TextUtil.toComponent("&aNext event starts at $requirementPlayers online players!"))
+        updatePlayerCountEvent()
     }
 
     private fun startBlocksMinedEvent() {
+        isPlayerCountEvent = false
         isBlocksMinedEvent = true
         bar?.color = BarColor.GREEN
         bar?.setTitle(TextUtil.colorize(getEventTitle(false)))
-        Bukkit.broadcast(TextUtil.toComponent("&aNext event starts at ${TextUtil.formatNum(requirementBlocks)} mined blocks!"))
+        updateBlocksMinedEvent()
     }
 
     fun updatePlayerCountEvent() {
         if (!isPlayerCountEvent || isActive) return
-        updateEventBar(Bukkit.getOnlinePlayers().size.toLong(), requirementPlayers.toLong(), "&bPlayers Online: ${TextUtil.formatNum(Bukkit.getOnlinePlayers().size)} / ${TextUtil.formatNum(requirementPlayers)}")
+        val eligiblePlayers = getEligibleOnlinePlayerCount()
+        updateEventBar(
+            eligiblePlayers.toLong(),
+            requirementPlayers.toLong(),
+            "&bPlayers Online: ${TextUtil.formatNum(eligiblePlayers)} / ${TextUtil.formatNum(requirementPlayers)}"
+        )
     }
 
     fun updateBlocksMinedEvent() {
@@ -123,9 +183,12 @@ object BossbarManager {
             return
         }
         isActive = true
+        eventEndTask?.cancel()
+        eventEndTask = null
         bar?.setTitle(TextUtil.colorize(getEventTitle(true)))
         bar?.color = BarColor.PINK
         startActiveBossBarCountdown()
+        saveState()
 
         val timeText = if (durationSeconds < 60) {
             "$durationSeconds second${if (durationSeconds == 1) "" else "s"}"
@@ -134,7 +197,7 @@ object BossbarManager {
             "$minutes minute${if (minutes == 1) "" else "s"}"
         }
 
-        Bukkit.getOnlinePlayers().forEach { it.playSound(it.location, "block.note_block.pling", 1f, 0.9f) }
+        getEventEligiblePlayers().forEach { it.playSound(it.location, "block.note_block.pling", 1f, 0.9f) }
         playRarityActivationSound()
         if (type == "RareOres") {
             if (!RareOresEventManager.startFromEventManager()) {
@@ -143,7 +206,7 @@ object BossbarManager {
             }
             return
         }
-        Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable { resetEvent() }, durationSeconds * 20L)
+        scheduleEventEnd(durationSeconds * 20L)
     }
 
     private fun startActiveBossBarCountdown() {
@@ -160,6 +223,8 @@ object BossbarManager {
     fun resetEvent() {
         activeBarTask?.cancel()
         activeBarTask = null
+        eventEndTask?.cancel()
+        eventEndTask = null
         activeEventEndsAtMillis = 0L
         bar?.progress = 0.0
         blocksMinedGlobally = 0
@@ -168,6 +233,7 @@ object BossbarManager {
         isPlayerCountEvent = false
         initEvent()
         checkEventConditions()
+        saveState()
     }
 
     fun getActiveEventTimeRemainingMillis(): Long =
@@ -189,25 +255,34 @@ object BossbarManager {
         "normal" -> "&b&lNORMAL"
         "rare" -> "&e&lRARE"
         "mythic" -> "&0&l&kl&5&lMYTHIC&0&l&kl"
-        else -> "&e&l&kl&f&lGOD&e&l&kl"
+        "god" -> "&e&l&kl&f&lGOD&e&l&kl"
+        else -> "&b&l✦ &d&lSECRET &b&l✦"
     }
 
     private fun getEventRarity() {
-        val roll = Random.nextInt(0, 101)
+        val roll = Random.nextDouble(100.0)
         rarity = "normal"
-        if (roll > 75) rarity = "rare"
-        if (roll > 95) rarity = "mythic"
-        if (roll > 99) rarity = "god"
+        if (roll >= 75.0) rarity = "rare"
+        if (roll >= 95.0) rarity = "mythic"
+        if (roll >= 99.0) rarity = "god"
+        if (roll >= 99.9) rarity = "secret"
     }
 
     private fun playRarityActivationSound() {
         val sound = when (rarity) {
             "mythic" -> "entity.ender_dragon.ambient"
             "god" -> "item.trident.thunder"
+            "secret" -> "block.beacon.activate"
             else -> return
         }
-        Bukkit.getOnlinePlayers().forEach { it.playSound(it.location, sound, 1f, 1f) }
+        getEventEligiblePlayers().forEach { it.playSound(it.location, sound, 1f, 1f) }
     }
+
+    private fun getEligibleOnlinePlayerCount(): Int =
+        Bukkit.getOnlinePlayers().count { !TutorialManager.isTutorialMode(it) }
+
+    private fun getEventEligiblePlayers(): List<Player> =
+        Bukkit.getOnlinePlayers().filter { !TutorialManager.isTutorialMode(it) }
 
     private fun getEventMultiplier() {
         when (rarity) {
@@ -223,9 +298,13 @@ object BossbarManager {
                 multiplier = 2.5
                 weightMultiplier = 4.0
             }
-            else -> {
+            "god" -> {
                 multiplier = 3.0
                 weightMultiplier = 5.0
+            }
+            else -> {
+                multiplier = 4.0
+                weightMultiplier = 6.5
             }
         }
     }
@@ -235,7 +314,8 @@ object BossbarManager {
             "normal" -> Random.nextInt(25, 50) * 10L * max(MineManager.getActivePlayersInMine().size, 1)
             "rare" -> Random.nextInt(50, 75) * 10L * MineManager.getActivePlayersInMine().size
             "mythic" -> Random.nextInt(75, 100) * 10L * MineManager.getActivePlayersInMine().size
-            else -> Random.nextInt(100, 250) * 10L * MineManager.getActivePlayersInMine().size
+            "god" -> Random.nextInt(100, 250) * 10L * MineManager.getActivePlayersInMine().size
+            else -> Random.nextInt(250, 400) * 10L * MineManager.getActivePlayersInMine().size
         }
     }
 
@@ -247,7 +327,7 @@ object BossbarManager {
     }
 
     private fun getEventDuration(): Int = when (type) {
-        "RareOres" -> 60
+        "RareOres" -> 40
         else -> 20
     }
 
@@ -272,6 +352,7 @@ object BossbarManager {
         bar?.progress = 0.0
         bar?.color = BarColor.GREEN
         bar?.setTitle(TextUtil.colorize(getEventTitle(false)))
+        saveState()
         return forcedType
     }
 
@@ -285,6 +366,7 @@ object BossbarManager {
             "rare" -> "rare"
             "mythic" -> "mythic"
             "god" -> "god"
+            "secret" -> "secret"
             else -> return ""
         }
 
@@ -295,17 +377,111 @@ object BossbarManager {
         bar?.progress = 0.0
         bar?.color = BarColor.GREEN
         bar?.setTitle(TextUtil.colorize(getEventTitle(false)))
+        saveState()
         return forcedRarity
     }
 
     fun cancelCurrentEvent() {
         activeBarTask?.cancel()
         activeBarTask = null
+        eventEndTask?.cancel()
+        eventEndTask = null
         activeEventEndsAtMillis = 0L
         blocksMinedGlobally = 0
         isActive = false
         isBlocksMinedEvent = false
         isPlayerCountEvent = false
         bar?.progress = 0.0
+        saveState()
+    }
+
+    private fun restoreSavedActiveEvent(): Boolean {
+        if (!eventStateConfig.getBoolean("active", false)) return false
+
+        val savedType = eventStateConfig.getString("type") ?: return false
+        val savedRarity = eventStateConfig.getString("rarity") ?: return false
+        val remainingMillis = eventStateConfig.getLong("remainingMillis", 0L).coerceAtLeast(0L)
+        if (remainingMillis <= 0L) {
+            clearSavedState()
+            return false
+        }
+
+        type = savedType
+        rarity = savedRarity
+        getEventMultiplier()
+        durationSeconds = ((remainingMillis + 999L) / 1000L).toInt().coerceAtLeast(1)
+        isActive = true
+        isBlocksMinedEvent = false
+        isPlayerCountEvent = false
+        eventEndTask?.cancel()
+        eventEndTask = null
+        bar?.color = BarColor.PINK
+        bar?.setTitle(TextUtil.colorize(getEventTitle(true)))
+        startActiveBossBarCountdown()
+
+        if (type == "RareOres") {
+            val restored = RareOresEventManager.restoreActiveEvent(
+                remainingTicks = ((remainingMillis + 49L) / 50L).coerceAtLeast(1L),
+                weightMultiplier = weightMultiplier
+            )
+            if (!restored) {
+                resetEvent()
+                return false
+            }
+        } else {
+            scheduleEventEnd(((remainingMillis + 49L) / 50L).coerceAtLeast(1L))
+        }
+        return true
+    }
+
+    private fun scheduleEventEnd(delayTicks: Long) {
+        eventEndTask?.cancel()
+        eventEndTask = Bukkit.getScheduler().runTaskLater(
+            TestPlugin.instance,
+            Runnable { resetEvent() },
+            delayTicks.coerceAtLeast(1L)
+        )
+    }
+
+    private fun reevaluateWaitingTrigger() {
+        if (isActive) return
+        if (getEligibleOnlinePlayerCount() >= requirementPlayers) {
+            if (!isPlayerCountEvent) {
+                startPlayerCountEvent()
+            } else {
+                updatePlayerCountEvent()
+            }
+            return
+        }
+
+        if (!isBlocksMinedEvent) {
+            startBlocksMinedEvent()
+        } else {
+            updateBlocksMinedEvent()
+        }
+    }
+
+    private fun saveState() {
+        if (!::eventStateFile.isInitialized) return
+
+        if (!isActive || activeEventEndsAtMillis <= 0L) {
+            clearSavedState()
+            return
+        }
+
+        eventStateConfig.set("active", true)
+        eventStateConfig.set("type", type)
+        eventStateConfig.set("rarity", rarity)
+        eventStateConfig.set("remainingMillis", getActiveEventTimeRemainingMillis())
+        eventStateConfig.save(eventStateFile)
+    }
+
+    private fun clearSavedState() {
+        if (!::eventStateFile.isInitialized) return
+        eventStateConfig.set("active", false)
+        eventStateConfig.set("type", null)
+        eventStateConfig.set("rarity", null)
+        eventStateConfig.set("remainingMillis", 0L)
+        eventStateConfig.save(eventStateFile)
     }
 }

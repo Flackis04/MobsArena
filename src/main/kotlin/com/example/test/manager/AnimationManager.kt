@@ -10,6 +10,8 @@ import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import kotlin.math.PI
+import kotlin.math.sin
 
 object AnimationManager {
     enum class AnimationMode {
@@ -18,7 +20,7 @@ object AnimationManager {
     }
 
     private val activeAnimations = mutableMapOf<String, ActiveAnimation>()
-    private const val FRAME_COUNT = 8
+    private const val FRAME_COUNT = 10
     const val MIN_BLOCK_BREAK_DURATION_TICKS = FRAME_COUNT
     const val MAX_BLOCK_BREAK_DURATION_TICKS = 64
     const val MIN_EXTRA_BLOCK_DELAY_TICKS = 0L
@@ -48,9 +50,9 @@ object AnimationManager {
         fun spawnInitialFrame() {
             if (activeAnimation.display?.isValid == true) return
             activeAnimation.display = world.spawn(loc.clone(), BlockDisplay::class.java) {
-                val (initialScale, initialTranslate) = frameAt(0, animationMode)
+                val initialFrame = frameAt(0, animationMode)
                 it.block = blockData.clone()
-                it.transformation = transform(initialScale, initialTranslate)
+                it.transformation = transform(initialFrame)
                 it.interpolationDuration = 0
                 it.interpolationDelay = 0
             }
@@ -88,10 +90,10 @@ object AnimationManager {
                     return
                 }
 
-                val (scale, translate) = frameAt(frameIndex, animationMode)
+                val frame = frameAt(frameIndex, animationMode)
                 display.interpolationDuration = if (frameIndex == 0) 0 else frameStepTicks.toInt()
                 display.interpolationDelay = 0
-                display.transformation = transform(scale, translate)
+                display.transformation = transform(frame)
                 frameIndex++
             }
         }
@@ -169,27 +171,33 @@ object AnimationManager {
     fun clampExtraBlockDelayTicks(value: Long): Long =
         value.coerceIn(MIN_EXTRA_BLOCK_DELAY_TICKS, MAX_EXTRA_BLOCK_DELAY_TICKS)
 
-    private fun transform(scale: Float, translate: Float): Transformation {
+    private fun transform(frame: FrameState): Transformation {
         return Transformation(
-            Vector3f(translate, translate, translate),
-            Quaternionf(),
-            Vector3f(scale, scale, scale),
+            Vector3f(frame.translate, frame.verticalLift, frame.translate),
+            Quaternionf().rotateY(frame.rotation),
+            Vector3f(frame.scale, frame.scale, frame.scale),
             Quaternionf()
         )
     }
 
-    private fun frameAt(frameIndex: Int, animationMode: AnimationMode): Pair<Float, Float> {
+    private fun frameAt(frameIndex: Int, animationMode: AnimationMode): FrameState {
         val t = frameIndex.toFloat() / (FRAME_COUNT - 1).toFloat()
         val eased = when (animationMode) {
             AnimationMode.LINEAR -> t
             AnimationMode.CLASSIC -> t * t * t
         }
-        val scale = (1f - eased).coerceAtLeast(0.0011f)
+        val scale = (1f - (eased * 0.92f)).coerceAtLeast(0.0011f)
         val translate = 0.5f * eased
-        return scale to translate
+        val verticalLift = (sin(t * PI).toFloat() * 0.08f) - (eased * 0.015f)
+        val rotation = when (animationMode) {
+            AnimationMode.LINEAR -> eased * 0.35f
+            AnimationMode.CLASSIC -> eased * 0.8f
+        }
+        return FrameState(scale, translate, verticalLift, rotation)
     }
 
     private fun locKey(loc: Location): String = "${loc.world?.name}:${loc.blockX},${loc.blockY},${loc.blockZ}"
 
     private data class ActiveAnimation(var display: BlockDisplay?, var task: BukkitTask?)
+    private data class FrameState(val scale: Float, val translate: Float, val verticalLift: Float, val rotation: Float)
 }

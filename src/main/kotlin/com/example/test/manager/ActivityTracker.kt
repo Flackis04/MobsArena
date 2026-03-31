@@ -2,10 +2,10 @@ package com.example.test
 
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
+import io.papermc.paper.event.player.AsyncChatEvent
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
-import org.bukkit.event.player.AsyncPlayerChatEvent
 import org.bukkit.event.player.PlayerCommandPreprocessEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerJoinEvent
@@ -63,11 +63,7 @@ object ActivityTracker : Listener {
 
         val (winner, _) = winnerEntry ?: return
         KitManager.giveDynamite(winner, HOURLY_DYNAMITE_REWARD)
-        winner.sendTitle(
-            TextUtil.colorize("&cMost Active Miner"),
-            TextUtil.colorize("&a+64 Dynamite"),
-            10, 70, 20
-        )
+        TextUtil.showTitle(winner, "&cMost Active Miner", "&a+64 Dynamite", 10, 70, 20)
         winner.sendMessage(TextUtil.colorize("&aYou were the most active player in the mine this hour and received &cx64 Dynamite&a."))
     }
 
@@ -83,7 +79,7 @@ object ActivityTracker : Listener {
 
     @EventHandler
     fun onMove(event: PlayerMoveEvent) {
-        val to = event.to ?: return
+        val to = event.to
         val from = event.from
         if (to.blockX == from.blockX && to.blockY == from.blockY && to.blockZ == from.blockZ) return
         markActive(event.player)
@@ -97,7 +93,7 @@ object ActivityTracker : Listener {
     }
 
     @EventHandler
-    fun onChat(event: AsyncPlayerChatEvent) {
+    fun onChat(event: AsyncChatEvent) {
         lastActiveAt[event.player.uniqueId] = System.currentTimeMillis()
     }
 

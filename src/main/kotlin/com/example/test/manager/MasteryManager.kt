@@ -28,6 +28,29 @@ object MasteryManager {
 
     fun canOpenFor(key: String): Boolean = key in supportedKeys && key !in excludedKeys
 
+    fun reconcile(data: PlayerData): Boolean {
+        var changed = false
+
+        supportedKeys.forEach { key ->
+            val previousLevel = data.masteryLevels.getOrDefault(key, 0).coerceIn(0, MAX_MASTERY_LEVEL)
+            val correctedLevel = updateUnlockedMasteries(data, key)
+            if (correctedLevel != previousLevel) {
+                changed = true
+            }
+        }
+
+        MineManager.valuableDrops.forEach { material ->
+            val key = getValuableMasteryKey(material)
+            val previousLevel = data.masteryLevels.getOrDefault(key, 0).coerceIn(0, MAX_MASTERY_LEVEL)
+            val correctedLevel = updateUnlockedValuableMasteries(data, material)
+            if (correctedLevel != previousLevel) {
+                changed = true
+            }
+        }
+
+        return changed
+    }
+
     fun recordActivation(player: Player, key: String, amount: Long = 1L) {
         if (!canOpenFor(key) || amount <= 0L) return
         val data = DataStore.get(player.uniqueId)
@@ -168,7 +191,7 @@ object MasteryManager {
     }
 
     private fun updateUnlockedMasteries(data: PlayerData, key: String): Int {
-        var currentLevel = getMasteryLevel(data, key)
+        var currentLevel = 0
         while (currentLevel < MAX_MASTERY_LEVEL) {
             val nextLevel = currentLevel + 1
             if (getActivationCount(data, key) < getRequiredActivations(key, nextLevel)) break
@@ -221,7 +244,7 @@ object MasteryManager {
 
     private fun updateUnlockedValuableMasteries(data: PlayerData, material: Material): Int {
         val key = getValuableMasteryKey(material)
-        var currentLevel = data.masteryLevels.getOrDefault(key, 0).coerceIn(0, MAX_MASTERY_LEVEL)
+        var currentLevel = 0
         while (currentLevel < MAX_MASTERY_LEVEL) {
             val nextLevel = currentLevel + 1
             if (getValuableBlocksMined(data, material) < getRequiredValuableBlocksMined(material, nextLevel)) break
@@ -282,23 +305,11 @@ object MasteryManager {
     }
 
     private fun announceUpgradeMasteryLevelUp(player: Player, key: String, level: Int) {
-        player.sendTitle(
-            TextUtil.colorize("&d&lMastery Level Up"),
-            TextUtil.colorize("&7${formatUpgradeName(key)} mastery is now &d$level&7."),
-            10,
-            50,
-            10
-        )
+        TextUtil.showTitle(player, "&d&lMastery Level Up", "&7${formatUpgradeName(key)} mastery is now &d$level&7.", 10, 50, 10)
     }
 
     private fun announceBlockMasteryLevelUp(player: Player, material: Material, level: Int) {
-        player.sendTitle(
-            TextUtil.colorize("&6&lBlock Mastery Up"),
-            TextUtil.colorize("&7${formatMaterialName(material)} mastery is now &6$level&7."),
-            10,
-            50,
-            10
-        )
+        TextUtil.showTitle(player, "&6&lBlock Mastery Up", "&7${formatMaterialName(material)} mastery is now &6$level&7.", 10, 50, 10)
     }
 
     private fun formatUpgradeName(key: String): String =

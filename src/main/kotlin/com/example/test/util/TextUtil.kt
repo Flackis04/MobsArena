@@ -2,17 +2,18 @@ package com.example.test
 
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
-import org.bukkit.ChatColor
+import net.kyori.adventure.title.Title
 import org.bukkit.entity.Player
 import java.math.RoundingMode
 import java.text.DecimalFormat
+import java.time.Duration
 
 object TextUtil {
     private val legacySerializer = LegacyComponentSerializer.legacySection()
 
     fun colorize(input: String): String {
         val withHex = replaceHexColors(input)
-        return ChatColor.translateAlternateColorCodes('&', withHex)
+        return withHex.replace(Regex("&([0-9A-FK-ORa-fk-or])"), "§$1")
     }
 
     fun toComponent(input: String): Component = legacySerializer.deserialize(colorize(input))
@@ -67,4 +68,21 @@ object TextUtil {
     fun sendActionBarFor(player: Player, seconds: Double, message: String) {
         ActionBarManager.sendActionBarFor(player, seconds, message)
     }
+
+    fun showTitle(player: Player, title: String, subtitle: String, fadeInTicks: Int, stayTicks: Int, fadeOutTicks: Int) {
+        player.showTitle(
+            Title.title(
+                toComponent(title),
+                toComponent(subtitle),
+                Title.Times.times(
+                    ticksToDuration(fadeInTicks),
+                    ticksToDuration(stayTicks),
+                    ticksToDuration(fadeOutTicks)
+                )
+            )
+        )
+    }
+
+    private fun ticksToDuration(ticks: Int): Duration =
+        Duration.ofMillis((ticks.coerceAtLeast(0) * 50L))
 }

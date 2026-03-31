@@ -39,6 +39,8 @@ class OreIndexGui : Listener {
         setValuableSlot(player, gui, 32, Material.OCHRE_FROGLIGHT, "<#D89A4A>")
         setValuableSlot(player, gui, 33, Material.VERDANT_FROGLIGHT, "<#6FD66F>")
         setValuableSlot(player, gui, 34, Material.PEARLESCENT_FROGLIGHT, "<#FFB7FF>")
+        setValuableSlot(player, gui, 37, Material.SPAWNER, "<#6A5ACD>")
+        setValuableSlot(player, gui, 38, Material.TRIAL_SPAWNER, "<#E6E6FA>")
 
         gui.open(player)
     }

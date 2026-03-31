@@ -81,6 +81,12 @@ object ExperienceManager {
         if (amountToGive > 0) {
             player.giveExp(amountToGive)
             data.level = player.level
+            player.playSound(
+                player.location,
+                SoundManager.EXPERIENCE_PICKUP_SOUND,
+                SoundManager.getExperienceGainVolume(amountToGive),
+                SoundManager.getExperienceGainPitch(amountToGive)
+            )
         }
     }
 

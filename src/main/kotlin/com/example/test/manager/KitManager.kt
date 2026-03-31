@@ -120,6 +120,12 @@ object KitManager {
         player.inventory.addItem(dynamite)
     }
 
+    fun giveChargedDynamite(player: Player, amount: Int) {
+        val dynamite = ItemManager.makeChargedDynamite()
+        dynamite.amount = amount
+        player.inventory.addItem(dynamite)
+    }
+
     fun refreshPickaxe(player: Player) {
         val data = DataStore.get(player.uniqueId)
         val multiBreakChance = UpgradeFormulas.getMultiBreakBlockQuantity(

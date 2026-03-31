@@ -40,10 +40,4 @@ class ChatListener : Listener {
             if (cleanedPrefix.isBlank()) "" else "$cleanedPrefix "
         }.getOrDefault("")
     }
-
-    private fun formatDisplayedRank(data: PlayerData): String {
-        if (data.rebirth <= 0) return data.rank.toString()
-        val rebirthLetter = ('A'.code + ((data.rebirth - 1) % 26)).toChar()
-        return "$rebirthLetter${data.rank}"
-    }
 }

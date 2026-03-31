@@ -20,6 +20,9 @@ commands:
   setmastery:
     description: Set a mastery level for a player
     usage: /setmastery <player> <mastery> <level>
+  maxstats:
+    description: Max all bounded player stats
+    usage: /maxstats [player]
   resetvaluablemasteries:
     description: Reset all valuable mastery progress
     usage: /resetvaluablemasteries
@@ -32,13 +35,25 @@ commands:
     usage: /spawn
   mine:
     description: Teleport to your mine
-    usage: /mine
+    usage: /mine [player]
+  clan:
+    description: Manage your clan
+    usage: /clan
+  giveclanpoints:
+    description: Add clan points to a player's clan
+    usage: /giveclanpoints <player> <amount>
+  givelightningrod:
+    description: Give a Storm Rod deployable
+    usage: /givelightningrod <player> [amount]
+  trust:
+    description: Trust players on your mine
+    usage: /trust
   kit:
     description: Give a tier kit
     usage: /kit <tier> [player]
-  miner:
-    description: Open miner GUI
-    usage: /miner
+  oreindex:
+    description: Open ore index
+    usage: /oreindex
   autominer:
     description: Open auto miner GUI
     usage: /autominer
@@ -46,6 +61,9 @@ commands:
     description: Open blackmarket GUI
     usage: /blackmarket
     aliases: [bm]
+  pay:
+    description: Pay another player
+    usage: /pay <player> <amount>
   pvpshop:
     description: Open PvP combat shop
     usage: /pvpshop
@@ -55,6 +73,9 @@ commands:
   battlepass:
     description: Open battlepass
     usage: /battlepass
+  sessiontimeline:
+    description: View the latest saved player session timeline
+    usage: /sessiontimeline [player]
   newplayer:
     description: Reset new player flags
     usage: /newplayer [player] [boolean]
@@ -63,9 +84,6 @@ commands:
   givecoins:
     description: Dev commands
     usage: /givecoins
-  givetokens:
-    description: Dev commands
-    usage: /givetokens
   givedynamite:
     description: Give dynamite
     usage: /givedynamite <player> [amount]
@@ -115,6 +133,10 @@ commands:
     usage: /givescroll <rarity> [amount]
   store:
     usage: /store
+  ascend:
+    description: Open ascension tab in the progression UI
+    usage: /ascend
+    aliases: [ascension]
 
 permissions:
   command.dev:

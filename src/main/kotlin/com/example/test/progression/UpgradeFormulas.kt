@@ -5,16 +5,16 @@ import kotlin.random.Random
 
 object UpgradeFormulas {
     private const val FORTUNE_MAX_MULTIPLIER = 20.0
-    private const val FORTUNE_GROWTH = 4.5
+    private const val FORTUNE_GROWTH = 3.5
     private const val MULTI_BREAK_MAX_BASE = 7.5
-    private const val MULTI_BREAK_GROWTH = 5.0
+    private const val MULTI_BREAK_GROWTH = 2.0
     private const val ORE_BOOST_MAX_CHANCE = 0.03
-    private const val ORE_BOOST_GROWTH = 6.0
+    private const val ORE_BOOST_GROWTH = 1.5
     private const val EXCAVATOR_MAX_CHANCE = 0.15
-    private const val EXCAVATOR_GROWTH = 6.5
-    private const val LIGHTNING_MAX_CHANCE = 0.03
+    private const val EXCAVATOR_GROWTH = 2.5
+    private const val LIGHTNING_MAX_CHANCE = 0.04
     private const val LIGHTNING_GROWTH = 6.0
-    private const val JACKHAMMER_MAX_CHANCE = 0.02
+    private const val JACKHAMMER_MAX_CHANCE = 0.025
     private const val JACKHAMMER_GROWTH = 8.0
     private const val XP_GAIN_MAX_MULTIPLIER = 25.0
     private const val EXCAVATOR_EFFICIENCY_MAX = 7.5
@@ -24,7 +24,7 @@ object UpgradeFormulas {
     private const val SCROLL_FINDER_MAX_CHANCE = 0.00025
     private const val SCROLL_FINDER_GROWTH = 8.0
     private const val AUTO_MINER_LUCK_MAX_MULTIPLIER = 1.5
-    private const val AUTO_MINER_OFFLINE_MAX_RATE = 0.20
+    private const val AUTO_MINER_OFFLINE_MAX_RATE = 0.25
     private const val AUTO_MINER_EFFICIENCY_GROWTH = 5.0
     private const val AUTO_MINER_OFFLINE_GROWTH = 4.0
     private const val AUTO_MINER_LUCK_GROWTH = 4.0

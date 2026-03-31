@@ -12,22 +12,58 @@ import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import kotlin.random.Random
 
+data class ScrollApplicationResult(val levelsAdded: Int = 0, val maxLevelsAdded: Int = 0) {
+    val didApply: Boolean get() = levelsAdded > 0 || maxLevelsAdded > 0
+}
+
+private data class UpgradeEffectSnapshot(val level: Int, val maxLevel: Int)
+
 enum class UpgradeScrollType(val id: String, val displayName: String) {
     LIGHTNING("lightning", "Lightning"),
     VIRTUAL_JACKHAMMER("virtualJackhammer", "Jackhammer"),
     XP_GAIN("xpGain", "XP Gain"),
     ORE_FREQUENCY("oreFrequency", "Ore Frequency");
 
-    fun applyLevel(data: PlayerData, amount: Int = 1) {
-        val appliedLevels = amount.coerceAtMost(maxLevelWithScroll(data) - currentMaxLevel(data)).coerceAtLeast(0)
-        if (appliedLevels <= 0) return
-
-        setCurrentMaxLevel(data, currentMaxLevel(data) + appliedLevels)
-    }
-
     fun currentExtraLevels(data: PlayerData): Int = (currentMaxLevel(data) - baseMaxLevel(data)).coerceAtLeast(0)
 
-    fun canReceiveMore(data: PlayerData): Boolean = currentMaxLevel(data) < maxLevelWithScroll(data)
+    fun canReceiveMore(data: PlayerData): Boolean =
+        currentLevel(data) < currentMaxLevel(data) || currentMaxLevel(data) < maxLevelWithScroll(data)
+
+    fun applyScroll(data: PlayerData, amount: Int = 1): ScrollApplicationResult {
+        val requested = amount.coerceAtLeast(0)
+        if (requested <= 0) return ScrollApplicationResult()
+
+        val currentLevel = currentLevel(data)
+        val currentMaxLevel = currentMaxLevel(data)
+        if (currentLevel < currentMaxLevel) {
+            val appliedLevels = requested.coerceAtMost(currentMaxLevel - currentLevel)
+            if (appliedLevels <= 0) return ScrollApplicationResult()
+            setCurrentLevel(data, currentLevel + appliedLevels)
+            return ScrollApplicationResult(levelsAdded = appliedLevels)
+        }
+
+        val appliedMaxLevels = requested.coerceAtMost(maxLevelWithScroll(data) - currentMaxLevel).coerceAtLeast(0)
+        if (appliedMaxLevels <= 0) return ScrollApplicationResult()
+        setCurrentMaxLevel(data, currentMaxLevel + appliedMaxLevels)
+        return ScrollApplicationResult(maxLevelsAdded = appliedMaxLevels)
+    }
+
+    fun currentLevel(data: PlayerData): Int =
+        when (this) {
+            LIGHTNING -> data.lightningLevel
+            VIRTUAL_JACKHAMMER -> data.virtualJackhammerLevel
+            XP_GAIN -> data.xpGainLevel
+            ORE_FREQUENCY -> data.oreFrequencyLevel
+        }
+
+    fun setCurrentLevel(data: PlayerData, level: Int) {
+        when (this) {
+            LIGHTNING -> data.lightningLevel = level
+            VIRTUAL_JACKHAMMER -> data.virtualJackhammerLevel = level
+            XP_GAIN -> data.xpGainLevel = level
+            ORE_FREQUENCY -> data.oreFrequencyLevel = level
+        }
+    }
 
     fun currentMaxLevel(data: PlayerData): Int =
         when (this) {
@@ -133,7 +169,10 @@ object ScrollManager : Listener {
 
     fun tryAwardMiningScroll(player: Player) {
         val data = DataStore.get(player.uniqueId)
-        val procChance = UpgradeFormulas.getScrollFinderChance(data.scrollFinderLevel, data.scrollFinderMaxLevel)
+        val procChance = MineManager.applyProcMultiplier(
+            UpgradeFormulas.getScrollFinderChance(data.scrollFinderLevel, data.scrollFinderMaxLevel),
+            player
+        )
         if (procChance <= 0.0 || Random.nextDouble() > procChance) return
 
         val rarity = rollMiningScrollRarity()
@@ -166,13 +205,7 @@ object ScrollManager : Listener {
                     rollScrollOutcome(data, rarity, UpgradeScrollType.upgradeMenuTypes)
                 }
 
-                player.sendTitle(
-                    TextUtil.colorize("&eScrolling..."),
-                    TextUtil.colorize(buildRollText(rarity, previewOutcome)),
-                    0,
-                    12,
-                    0
-                )
+                TextUtil.showTitle(player, "&eScrolling...", buildRollText(rarity, previewOutcome), 0, 12, 0)
                 player.playSound(player.location, Sound.UI_BUTTON_CLICK, 0.8f, 1.0f + (index * 0.015f))
 
                 if (index == animationTicks.lastIndex) {
@@ -187,7 +220,9 @@ object ScrollManager : Listener {
         val quantity = item.amount.coerceAtLeast(1)
         if (!consumeScrollFromHand(player, hand, quantity)) return
         val data = DataStore.get(player.uniqueId)
-        val totals = linkedMapOf<UpgradeScrollType, Int>()
+        val levelTotals = linkedMapOf<UpgradeScrollType, Int>()
+        val maxLevelTotals = linkedMapOf<UpgradeScrollType, Int>()
+        val levelStartSnapshots = mutableMapOf<UpgradeScrollType, UpgradeEffectSnapshot>()
         var failures = 0
         repeat(quantity) {
             val outcome = rollScrollOutcome(data, rarity, UpgradeScrollType.upgradeMenuTypes.filter { it.canReceiveMore(data) })
@@ -195,11 +230,37 @@ object ScrollManager : Listener {
                 failures++
                 return@repeat
             }
-            outcome.type.applyLevel(data, outcome.levels)
-            totals[outcome.type] = (totals[outcome.type] ?: 0) + outcome.levels
+            if (outcome.type.currentLevel(data) < outcome.type.currentMaxLevel(data)) {
+                levelStartSnapshots.putIfAbsent(
+                    outcome.type,
+                    UpgradeEffectSnapshot(
+                        level = outcome.type.currentLevel(data),
+                        maxLevel = outcome.type.currentMaxLevel(data)
+                    )
+                )
+            }
+            val result = outcome.type.applyScroll(data, outcome.levels)
+            if (!result.didApply) {
+                failures++
+                return@repeat
+            }
+            if (result.levelsAdded > 0) {
+                levelTotals[outcome.type] = (levelTotals[outcome.type] ?: 0) + result.levelsAdded
+            }
+            if (result.maxLevelsAdded > 0) {
+                maxLevelTotals[outcome.type] = (maxLevelTotals[outcome.type] ?: 0) + result.maxLevelsAdded
+            }
         }
 
-        totals.entries.sortedBy { it.key.displayName }.forEach { (type, totalLevels) ->
+        levelTotals.entries.sortedBy { it.key.displayName }.forEach { (type, totalLevels) ->
+            val effectProgress = formatEffectProgress(type, data, levelStartSnapshots[type])
+            player.sendMessage(
+                TextUtil.colorize(
+                    "${rarity.color}${rarity.displayName} ${type.displayName} Scroll${if (quantity > 1) " x$quantity" else ""} &7added &b+$totalLevels &7level${if (totalLevels == 1) "" else "s"}${effectProgress ?: ""}"
+                )
+            )
+        }
+        maxLevelTotals.entries.sortedBy { it.key.displayName }.forEach { (type, totalLevels) ->
             player.sendMessage(
                 TextUtil.colorize(
                     "${rarity.color}${rarity.displayName} ${type.displayName} Scroll${if (quantity > 1) " x$quantity" else ""} &7added &b+$totalLevels &7max level${if (totalLevels == 1) "" else "s"}"
@@ -219,10 +280,31 @@ object ScrollManager : Listener {
             return
         }
         val data = DataStore.get(player.uniqueId)
-        outcome.type.applyLevel(data, outcome.levels)
+        val startingSnapshot = if (outcome.type.currentLevel(data) < outcome.type.currentMaxLevel(data)) {
+            UpgradeEffectSnapshot(
+                level = outcome.type.currentLevel(data),
+                maxLevel = outcome.type.currentMaxLevel(data)
+            )
+        } else {
+            null
+        }
+        val result = outcome.type.applyScroll(data, outcome.levels)
+        if (!result.didApply) {
+            player.sendMessage(TextUtil.colorize("${rarity.color}${rarity.displayName} Scroll &7did not upgrade anything."))
+            return
+        }
+        val effectProgress = if (result.levelsAdded > 0) {
+            formatEffectProgress(outcome.type, data, startingSnapshot)
+        } else {
+            null
+        }
         player.sendMessage(
             TextUtil.colorize(
-                "${rarity.color}${rarity.displayName} ${outcome.type.displayName} Scroll${if (quantity > 1) " x$quantity" else ""} &7added &b+${outcome.levels} &7max level${if (outcome.levels == 1) "" else "s"}"
+                if (result.levelsAdded > 0) {
+                    "${rarity.color}${rarity.displayName} ${outcome.type.displayName} Scroll${if (quantity > 1) " x$quantity" else ""} &7added &b+${result.levelsAdded} &7level${if (result.levelsAdded == 1) "" else "s"}${effectProgress ?: ""}"
+                } else {
+                    "${rarity.color}${rarity.displayName} ${outcome.type.displayName} Scroll${if (quantity > 1) " x$quantity" else ""} &7added &b+${result.maxLevelsAdded} &7max level${if (result.maxLevelsAdded == 1) "" else "s"}"
+                }
             )
         )
         player.playSound(player.location, Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.15f)
@@ -258,6 +340,29 @@ object ScrollManager : Listener {
         } else {
             "${rarity.color}${rarity.displayName} ${outcome.type.displayName} &7+&b${outcome.levels}"
         }
+
+    private fun formatEffectProgress(type: UpgradeScrollType, data: PlayerData, startingSnapshot: UpgradeEffectSnapshot?): String? {
+        val start = startingSnapshot ?: return null
+        val previousEffect = formatUpgradeEffect(type, data, start.level, start.maxLevel) ?: return null
+        val currentEffect = formatUpgradeEffect(type, data, type.currentLevel(data), type.currentMaxLevel(data)) ?: return null
+        if (previousEffect == currentEffect) return null
+        return " &8(${previousEffect} &7-> ${currentEffect}&8)"
+    }
+
+    private fun formatUpgradeEffect(type: UpgradeScrollType, data: PlayerData, level: Int, maxLevel: Int): String? {
+        fun formatDecimal(value: Number): String = "%.3f".format(value.toDouble())
+
+        return when (type) {
+            UpgradeScrollType.LIGHTNING ->
+                "${formatDecimal(UpgradeFormulas.getLightningChance(level, maxLevel, getBonus(data, type)) * 100)}%"
+            UpgradeScrollType.VIRTUAL_JACKHAMMER ->
+                "${formatDecimal(UpgradeFormulas.getVirtualJackhammerChance(level, maxLevel, getBonus(data, type)) * 100)}%"
+            UpgradeScrollType.XP_GAIN ->
+                "${formatDecimal(ExperienceManager.getExperienceMultiplier(level, maxLevel, getBonus(data, type)))}x"
+            UpgradeScrollType.ORE_FREQUENCY ->
+                "${formatDecimal(MineManager.getOreFrequencyMultiplier(level, maxLevel, getBonus(data, type)))}x"
+        }
+    }
 
     private fun rollScrollOutcome(data: PlayerData, rarity: ScrollRarity, eligibleTypes: List<UpgradeScrollType>): ScrollOutcome {
         if (eligibleTypes.isEmpty()) return ScrollOutcome(null, 0)

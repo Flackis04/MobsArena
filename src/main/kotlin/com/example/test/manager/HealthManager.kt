@@ -1,5 +1,6 @@
 package com.example.test
 
+import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Player
 import kotlin.math.min
 
@@ -13,7 +14,7 @@ object HealthManager {
 
     fun apply(player: Player, level: Int) {
         val value = maxHealthForLevel(level)
-        player.maxHealth = value
+        player.getAttribute(Attribute.MAX_HEALTH)?.baseValue = value
         if (player.health > value) player.health = value
     }
 }

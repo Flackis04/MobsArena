@@ -64,13 +64,14 @@ object StatsManager {
         // Headers
         val headers = listOf(
             "&9⛏ ʙʟᴏᴄᴋs ᴍɪɴᴇᴅ",
-            "<#FFD700>🪙 ᴄᴏɪɴs",
-            "&d⭐ ʀᴀɴᴋ",
+            "<#FFD700>💰 ᴄᴏɪɴs",
+            "&d♛ ʀᴀɴᴋ",
             "&a✦ ʟᴇᴠᴇʟ",
-            "&3🕒 ᴘʟᴀʏᴛɪᴍᴇ"
+            "&3⌛ ᴘʟᴀʏᴛɪᴍᴇ",
+            "<#FF7AE0>⚔ ᴄʟᴀɴᴛᴏᴘ"
         )
 
-        val columnStep = 3.5
+        val columnStep = 3.8
         val startOffset = -((headers.size - 1) * columnStep) / 2.0
         val yOffset = 0.0
 
@@ -85,13 +86,15 @@ object StatsManager {
         listTopPlayers("rank", offset(baseLoc, startOffset + 2 * columnStep, yOffset, 0.0), listScale)
         listTopPlayers("balance", offset(baseLoc, startOffset + 1 * columnStep, yOffset, 0.0), listScale)
         listTopPlayers("level", offset(baseLoc, startOffset + 3 * columnStep, yOffset, 0.0), listScale)
+        listTopClans(offset(baseLoc, startOffset + 5 * columnStep, yOffset, 0.0), listScale)
 
     }
 
     private fun listTopPlayers(stat: String, loc: Location, scale: Double) {
         val sorted = if (stat == "rank") {
             DataStore.all().sortedWith(
-                compareByDescending<Pair<java.util.UUID, PlayerData>> { it.second.rebirth }
+                compareByDescending<Pair<java.util.UUID, PlayerData>> { it.second.ascension }
+                    .thenByDescending { it.second.rebirth }
                     .thenByDescending { it.second.rank }
             )
         } else {
@@ -149,10 +152,27 @@ object StatsManager {
         }
     }
 
-    private fun formatDisplayedRank(data: PlayerData): String {
-        if (data.rebirth <= 0) return data.rank.toString()
-        val rebirthLetter = ('A'.code + ((data.rebirth - 1) % 26)).toChar()
-        return "$rebirthLetter${data.rank}"
+    private fun listTopClans(loc: Location, scale: Double) {
+        var rank = 0
+        for (clan in ClanManager.getTopClans()) {
+            if (rank >= 10) break
+            rank++
+            loc.subtract(0.0, 0.4, 0.0)
+
+            val rankPrefix = when (rank) {
+                1 -> "<#FFD700>1."
+                2 -> "<#C0C0C0>2."
+                3 -> "<#CD7F32>3."
+                else -> "&8$rank."
+            }
+
+            spawnTextDisplay(
+                loc.clone(),
+                scale,
+                Color.fromARGB(0, 0, 0, 0),
+                "$rankPrefix &7${clan.name} - &bL${ClanManager.getClanLevel(clan)}"
+            )
+        }
     }
 
     private fun spawnTextDisplay(loc: Location, scale: Double, color: Color, text: String) {

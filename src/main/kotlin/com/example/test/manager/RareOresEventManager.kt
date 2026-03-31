@@ -4,8 +4,6 @@ import org.bukkit.Bukkit
 import org.bukkit.scheduler.BukkitTask
 
 object RareOresEventManager {
-    private const val EVENT_DURATION_TICKS = 20L * 60L
-
     private var active = false
     private var valuableWeightMultiplier = 1.0
     private var endTask: BukkitTask? = null
@@ -27,12 +25,6 @@ object RareOresEventManager {
 
     fun getValuableWeightMultiplier(): Double = valuableWeightMultiplier
 
-    fun restartActiveTimer() {
-        if (!active) return
-        scheduleEventEnd()
-        MineManager.setResetCountdownTicks(EVENT_DURATION_TICKS)
-    }
-
     fun cancelCurrentEvent() {
         if (!active) return
         active = false
@@ -47,20 +39,34 @@ object RareOresEventManager {
 
         active = true
         valuableWeightMultiplier = BossbarManager.weightMultiplier
+        val durationTicks = (BossbarManager.durationSeconds * 20L).coerceAtLeast(1L)
         MineManager.startRareOresReset(
-            durationTicks = EVENT_DURATION_TICKS,
+            durationTicks = durationTicks,
             valuableWeightMultiplier = valuableWeightMultiplier
         )
-        scheduleEventEnd()
+        scheduleEventEnd(durationTicks)
         return true
     }
 
-    private fun scheduleEventEnd() {
+    fun restoreActiveEvent(remainingTicks: Long, weightMultiplier: Double): Boolean {
+        if (!canStart()) return false
+
+        active = true
+        valuableWeightMultiplier = weightMultiplier
+        MineManager.startRareOresReset(
+            durationTicks = remainingTicks,
+            valuableWeightMultiplier = valuableWeightMultiplier
+        )
+        scheduleEventEnd(remainingTicks)
+        return true
+    }
+
+    private fun scheduleEventEnd(durationTicks: Long) {
         endTask?.cancel()
         endTask = Bukkit.getScheduler().runTaskLater(
             TestPlugin.instance,
             Runnable { endEvent() },
-            EVENT_DURATION_TICKS
+            durationTicks
         )
     }
 

@@ -21,6 +21,7 @@ object DataStore {
         "storageContents",
         "deathStorageContents",
         "autoMinerStorageContents",
+        "trustedMinePlayers",
         "hasClaimedBattlepass",
         "hasClaimedPlaytimeRewards",
         "killStreak",
@@ -95,10 +96,10 @@ object DataStore {
                     }
                 }
             )
+            config.set("$key.trustedMinePlayers", d.trustedMinePlayers)
 
             config.set("$key.hasClaimedBattlepass", d.hasClaimedBattlepass.toList())
             config.set("$key.hasClaimedPlaytimeRewards", d.hasClaimedPlaytimeRewards.toList())
-            config.set("$key.hasUsedNoobProtection", d.hasUsedNoobProtection)
             config.set("$key.animationsEnabled", d.animationsEnabled)
             config.set("$key.animationLinearMode", d.animationLinearMode)
             config.set("$key.animationExtraBlockDelayTicks", d.animationExtraBlockDelayTicks)
@@ -133,6 +134,7 @@ object DataStore {
             d.storageContents = loadStorageContents(key)
             d.deathStorageContents = loadStorageContents(key, "deathStorageContents")
             d.autoMinerStorageContents = loadStorageContents(key, "autoMinerStorageContents")
+            d.trustedMinePlayers = config.getStringList("$key.trustedMinePlayers").toMutableList()
             d.hasClaimedBattlepass = config.getIntegerList("$key.hasClaimedBattlepass").toMutableSet()
             d.hasClaimedPlaytimeRewards = config.getIntegerList("$key.hasClaimedPlaytimeRewards").toMutableSet()
 
@@ -285,6 +287,8 @@ class PlayerData {
     var oreFrequencyMaxLevel = LevelManager.oreFrequencyMaxLevel
     var scrollFinderLevel = 1
     var scrollFinderMaxLevel = LevelManager.scrollFinderMaxLevel
+    var backpackLevel = 1
+    var backpackMaxLevel = LevelManager.backpackMaxLevel
     var autoMinerFortuneLevel = 1
     var autoMinerFortuneMaxLevel = LevelManager.autoMinerFortuneMaxLevel
     var autoMinerEfficiencyLevel = 1
@@ -303,11 +307,14 @@ class PlayerData {
     var level = 0
     var blocksMined = 0L
     var playtimeSeconds = 0L
+    var playtimeSecondsAtLastRebirth = 0L
+    var paymentUnlockPlaytimeSeconds = 0L
     var mineCenterX = Int.MIN_VALUE
     var mineCenterZ = Int.MIN_VALUE
     var multiBreakScrollBonus = 0.0
 
     var rebirth = 0
+    var ascension = 0
     var experienceBuffer = 0.0
     var valuableCollected: MutableMap<String, Long> = mutableMapOf()
     var masteryActivations: MutableMap<String, Long> = mutableMapOf()
@@ -330,14 +337,17 @@ class PlayerData {
     var valuableBlocksBroken = 0
     var hasSeenBackpackSellHint = false
     var hasSeenUpgradeHint = false
-    var noobProtection = false
-    var hasUsedNoobProtection = false
+    var tutorialActive = false
+    var tutorialPendingUpgradeClose = false
     var flight = false
     var hasReceivedJoinLoadout = false
     var hasSeenMineHelp = false
     var storageContents: MutableList<ItemStack> = mutableListOf()
     var deathStorageContents: MutableList<ItemStack> = mutableListOf()
     var autoMinerStorageContents: MutableList<ItemStack> = mutableListOf()
+    var trustedMinePlayers: MutableList<String> = mutableListOf()
+    var lightningRodPlaced = false
+    var lightningRodCount = 0
     var animationsEnabled = true
     var animationLinearMode = true
     var animationExtraBlockDelayTicks = 0L

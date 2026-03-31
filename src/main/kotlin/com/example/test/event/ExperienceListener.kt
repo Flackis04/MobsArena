@@ -1,6 +1,5 @@
 package com.example.test
 
-import org.bukkit.Sound
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerExpChangeEvent
@@ -38,18 +37,23 @@ class ExperienceListener : Listener {
 
         if (event.newLevel <= event.oldLevel) return
 
-        player.playSound(player.location, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f)
+        player.playSound(
+            player.location,
+            SoundManager.LEVEL_UP_SOUND,
+            0.9f,
+            SoundManager.getLevelUpMainPitch(event.newLevel)
+        )
+        player.playSound(
+            player.location,
+            SoundManager.LEVEL_UP_ACCENT_SOUND,
+            0.45f,
+            SoundManager.getLevelUpAccentPitch(event.newLevel)
+        )
 
         val efficiencyLevel = ItemManager.getPickaxeEfficiencyLevel(event.newLevel, data.rebirth)
         if (event.newLevel % 8 == 0) {
             if (TutorialManager.isRunning(data)) return
-            player.sendTitle(
-                TextUtil.colorize("&b&lEfficiency Upgraded"),
-                TextUtil.colorize("&7Your pickaxe is now &bEfficiency $efficiencyLevel"),
-                10,
-                50,
-                10
-            )
+            TextUtil.showTitle(player, "&b&lEfficiency Upgraded", "&7Your pickaxe is now &bEfficiency $efficiencyLevel", 10, 50, 10)
             return
         }
 

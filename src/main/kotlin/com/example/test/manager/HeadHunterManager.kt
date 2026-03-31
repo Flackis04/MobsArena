@@ -53,7 +53,7 @@ object HeadHunterManager {
             return
         }
         if (hasToReturnSkull[player.uniqueId] == true) {
-            player.sendTitle("", TextUtil.colorize("&7Return &c${targetName[player.uniqueId]}&7's &7head for a reward"), 0, 40, 0)
+            TextUtil.showTitle(player, "", "&7Return &c${targetName[player.uniqueId]}&7's &7head for a reward", 0, 40, 0)
             return
         }
         updatePossibleTargets()
@@ -64,14 +64,14 @@ object HeadHunterManager {
         updatePossibleTargets()
         possibleTargets.remove(player)
         if (possibleTargets.size < 2) {
-            player.sendTitle("", TextUtil.colorize("&7Atleast 2 players needs to be in the arena in order to use this"), 0, 40, 0)
+            TextUtil.showTitle(player, "", "&7Atleast 2 players needs to be in the arena in order to use this", 0, 40, 0)
             return
         }
         val target = possibleTargets.random()
         target.isGlowing = true
         targetPlayer[player.uniqueId] = target.uniqueId
         targetName[player.uniqueId] = target.name
-        player.sendTitle("", TextUtil.colorize("&7Return &c${target.name}&7's &7head for a reward"), 0, 40, 0)
+        TextUtil.showTitle(player, "", "&7Return &c${target.name}&7's &7head for a reward", 0, 40, 0)
     }
 
     private fun completeHeadHunter(player: Player) {
@@ -98,7 +98,7 @@ object HeadHunterManager {
     private fun checkTargetReminder(player: Player) {
         val targetNameValue = targetName[player.uniqueId] ?: return
         if (possibleTargets.any { it.name == targetNameValue }) {
-            player.sendTitle("", TextUtil.colorize("&7Return &c$targetNameValue&7's &7head for a reward"), 0, 40, 0)
+            TextUtil.showTitle(player, "", "&7Return &c$targetNameValue&7's &7head for a reward", 0, 40, 0)
             return
         }
         headHunter(player)

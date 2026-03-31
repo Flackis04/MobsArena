@@ -2,23 +2,30 @@ package com.example.test
 
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.Particle
 import org.bukkit.block.Block
+import org.bukkit.block.data.BlockData
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import kotlin.random.Random
 
 object BlockRemovalManager {
 
+    data class RemovalResult(
+        val totalBlocksMined: Int,
+        val materialsMined: List<Material>
+    )
+
     fun handleBlockRemoval(
         player: Player?,
         block: Block,
         blockQuantity: Double
-    ): Int {
+    ): RemovalResult {
 
         var cumBlocksMined = 1
-        val player = player ?: return 0
+        val player = player ?: return RemovalResult(0, emptyList())
         val resolvedBlockQuantity = resolveBlockQuantity(blockQuantity)
-        if (resolvedBlockQuantity <= 0) return cumBlocksMined
+        if (resolvedBlockQuantity <= 0) return RemovalResult(cumBlocksMined, emptyList())
         val blocks = MineManager.getBlocks(block, player, 2)
         val closestBlocks = MineManager.getClosestBlocks(block, blocks, resolvedBlockQuantity)
             .filter { MineManager.containsMine(it.location) }
@@ -30,13 +37,14 @@ object BlockRemovalManager {
         } else {
             configuredDelay
         }
+        val materialsMined = mutableListOf<Material>()
 
         for ((index, b1) in closestBlocks.withIndex()) {
             val startDelayTicks = (index + 1L) * delayStepTicks
-            processExtraBlock(player, b1, startDelayTicks)
+            materialsMined += processExtraBlock(player, b1, startDelayTicks)
             cumBlocksMined++
         } // else, reveal block on blocks furthest away
-        return cumBlocksMined
+        return RemovalResult(cumBlocksMined, materialsMined)
     }
 
     private fun resolveBlockQuantity(blockQuantity: Double): Int {
@@ -46,7 +54,7 @@ object BlockRemovalManager {
         return if (Random.nextDouble() < fractionalChance) wholeBlocks + 1 else wholeBlocks
     }
 
-    private fun processExtraBlock(player: Player, block: Block, startDelayTicks: Long) {
+    private fun processExtraBlock(player: Player, block: Block, startDelayTicks: Long): Material {
         val stored = MineManager.getStoredOre(block.location)
         val actualType = stored ?: block.type
         if (stored != null && block.type != stored) block.type = stored
@@ -69,25 +77,35 @@ object BlockRemovalManager {
         }
         //player.sendMessage(drops.toString())
         if (MineManager.mineableBlocks.contains(actualType)) {
-            AnimationManager.breakBlock(
-                player,
-                block.location,
-                actualType,
-                blockData,
-                startDelayTicks = startDelayTicks,
-                onStart = {
-                    announceRareFind(player, actualType)
-                    deliverDrops(player, drops, block.location)
-                    ExperienceManager.giveValuableExperience(player, actualType)
-                    if (actualType in MineManager.valuables) {
-                        TutorialManager.handleValuableBreak(player)
-                    }
-                    if (actualType in MineManager.mineableBlocks) {
-                        ScrollManager.tryAwardMiningScroll(player)
-                    }
+            val onBreak = {
+                playMiningFeedback(player, actualType, block.location, blockData, data.oreBoostActive, data.excavatorActive)
+                announceRareFind(player, actualType)
+                deliverDrops(player, drops, block.location)
+                ExperienceManager.giveValuableExperience(player, actualType)
+                if (actualType in MineManager.valuables) {
+                    TutorialManager.handleValuableBreak(player)
                 }
-            )
+                if (actualType in MineManager.mineableBlocks) {
+                    ScrollManager.tryAwardMiningScroll(player)
+                }
+            }
+            if (actualType == Material.TRIAL_SPAWNER) {
+                block.type = Material.AIR
+                MineManager.removeStoredOre(block.location)
+                MineManager.revealExposedBlocks(block)
+                onBreak()
+            } else {
+                AnimationManager.breakBlock(
+                    player,
+                    block.location,
+                    actualType,
+                    blockData,
+                    startDelayTicks = startDelayTicks,
+                    onStart = onBreak
+                )
+            }
         } else {
+            playMiningFeedback(player, actualType, block.location, blockData, data.oreBoostActive, data.excavatorActive)
             deliverDrops(player, drops, block.location)
             ExperienceManager.giveValuableExperience(player, actualType)
             if (actualType in MineManager.valuables) {
@@ -95,6 +113,7 @@ object BlockRemovalManager {
             }
             ScrollManager.tryAwardMiningScroll(player)
         }
+        return actualType
     }
 
     fun deliverDrops(player: Player?, drops: List<ItemStack>, originLoc: org.bukkit.Location) {
@@ -107,6 +126,7 @@ object BlockRemovalManager {
         }
 
         val data = DataStore.get(player.uniqueId)
+        val hasStorage = player.inventory.contents.any { ItemManager.isStorage(it) }
 
         for (drop in drops) {
             if (drop.type == Material.AIR) continue
@@ -114,38 +134,31 @@ object BlockRemovalManager {
 
             val valuableIndex = MineManager.valuableDrops.indexOf(drop.type)
             if (valuableIndex != -1) {
-                val amount = drop.amount
-                val itemStack = MineManager.createValuableItem(drop.type, amount)
-                val hasStorage = player.inventory.contents.any { ItemManager.isStorage(it) }
-                val data = DataStore.get(player.uniqueId)
-
-                if (data.oreBoostActive) {
-                    repeat(2) {
-                        if (!hasStorage) {
-                            player.inventory.addItem(itemStack.clone())
-                        } else {
-                            StorageManager.addDrop(player, itemStack.clone())
+                val clanAdjustedAmount = rollScaledAmount(drop.amount, ClanManager.getPlayerFortuneMultiplier(player.uniqueId))
+                val totalGenerated = if (data.oreBoostActive) clanAdjustedAmount * 2 else clanAdjustedAmount
+                if (totalGenerated > 0) {
+                    val payoutStack = MineManager.createValuableItem(drop.type, totalGenerated)
+                    if (!hasStorage) {
+                        player.inventory.addItem(payoutStack)
+                    } else {
+                        val storedAmount = StorageManager.addDrop(player, payoutStack)
+                        if (storedAmount < totalGenerated) {
+                            val overflow = payoutStack.clone().apply { amount = totalGenerated - storedAmount }
+                            val leftover = player.inventory.addItem(overflow)
+                            if (leftover.isNotEmpty()) {
+                                leftover.values.forEach { originLoc.world?.dropItemNaturally(originLoc, it) }
+                            }
                         }
                     }
-                    MasteryManager.recordValuableCollection(player, drop.type, amount * 2)
+                }
+
+                MasteryManager.recordValuableCollection(player, drop.type, totalGenerated)
+                if (totalGenerated > 0) {
                     player.playSound(
                         player.location,
                         SoundManager.ITEM_PICKUP_SOUND,
                         SoundManager.ITEM_PICKUP_VOLUME,
-                        SoundManager.getValuablePickupPitch(valuableIndex, oreBoostActive = true, excavatorActive = data.excavatorActive)
-                    )
-                } else {
-                    if (!hasStorage) {
-                        player.inventory.addItem(itemStack.clone())
-                    } else {
-                        StorageManager.addDrop(player, itemStack.clone())
-                    }
-                    MasteryManager.recordValuableCollection(player, drop.type, amount)
-                    player.playSound(
-                        player.location,
-                        SoundManager.ITEM_PICKUP_SOUND,
-                        SoundManager.ITEM_PICKUP_VOLUME,
-                        SoundManager.getValuablePickupPitch(valuableIndex, oreBoostActive = false, excavatorActive = data.excavatorActive)
+                        SoundManager.getValuablePickupPitch(valuableIndex, oreBoostActive = data.oreBoostActive, excavatorActive = data.excavatorActive)
                     )
                 }
                 continue
@@ -181,13 +194,36 @@ object BlockRemovalManager {
     }
 
     fun announceRareFind(player: Player?, blockType: Material) {
-        if (player == null) return
-        val rareStartIndex = MineManager.valuables.indexOf(Material.MAGMA_BLOCK)
-        val blockIndex = MineManager.valuables.indexOf(blockType)
-        if (blockIndex == -1 || blockIndex < rareStartIndex) return
+    }
 
-        val displayName = MineManager.valuableNames[blockIndex]
-        Bukkit.broadcast(TextUtil.toComponent("&b${player.name} &7found &l$displayName&7!"))    }
+    fun playMiningFeedback(
+        player: Player,
+        blockType: Material,
+        location: org.bukkit.Location,
+        blockData: BlockData,
+        oreBoostActive: Boolean,
+        excavatorActive: Boolean
+    ) {
+        val effectLocation = location.clone().add(0.5, 0.5, 0.5)
+        player.playSound(
+            effectLocation,
+            SoundManager.getMineBreakSound(blockType),
+            SoundManager.getMineBreakVolume(blockType),
+            SoundManager.getBreakPitch(excavatorActive)
+        )
+
+        player.spawnParticle(Particle.BLOCK, effectLocation, 12, 0.18, 0.18, 0.18, 0.02, blockData)
+        if (blockType in MineManager.valuables) {
+            val valuableIndex = MineManager.valuables.indexOf(blockType)
+            player.spawnParticle(Particle.ENCHANT, effectLocation, 6, 0.28, 0.28, 0.28, 0.01)
+            player.playSound(
+                effectLocation,
+                SoundManager.EXPERIENCE_PICKUP_SOUND,
+                0.22f,
+                SoundManager.getRewardChimePitch(valuableIndex, oreBoostActive)
+            )
+        }
+    }
 
     fun getRolls(): Pair<List<Int>, List<Int>> {
         val rolls = (1..5).map { Random.nextInt(0, LevelManager.multiBreakMaxLevel + 1) }

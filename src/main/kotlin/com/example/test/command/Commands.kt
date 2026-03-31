@@ -1,13 +1,16 @@
 package com.example.test
 
+import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.OfflinePlayer
+import org.bukkit.Statistic
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import java.lang.reflect.Modifier
+import java.time.Duration
 
 class BaltopCommand : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
@@ -38,6 +41,63 @@ class BaltopCommand : CommandExecutor {
     }
 }
 
+class PayCommand : CommandExecutor {
+    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
+        val player = sender as? Player ?: return true
+        if (args.size < 2) return false
+
+        val target = Bukkit.getPlayerExact(args[0])
+        if (target == null || !target.isOnline) {
+            player.sendMessage(TextUtil.colorize("&cThat player must be online to receive payment."))
+            return true
+        }
+        if (target.uniqueId == player.uniqueId) {
+            player.sendMessage(TextUtil.colorize("&cYou cannot pay yourself."))
+            return true
+        }
+
+        val amount = args[1].toLongOrNull()
+        if (amount == null || amount <= 0L) {
+            player.sendMessage(TextUtil.colorize("&cAmount must be a positive whole number."))
+            return true
+        }
+
+        val senderData = DataStore.get(player.uniqueId)
+        if (senderData.balance < amount) {
+            player.sendMessage(TextUtil.colorize("&cYou don't have enough ${ItemManager.COIN_NAME_PLURAL}!"))
+            return true
+        }
+
+        val targetData = DataStore.get(target.uniqueId)
+        targetData.playtimeSeconds = target.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20L
+        // PLAY_ONE_MINUTE : Name is misleading, actually records ticks played.
+        if (targetData.rebirth > 0) {
+            val unlockPlaytime = when {
+                targetData.paymentUnlockPlaytimeSeconds > 0L -> targetData.paymentUnlockPlaytimeSeconds
+                targetData.playtimeSecondsAtLastRebirth > 0L -> targetData.playtimeSecondsAtLastRebirth + REBIRTH_PAYMENT_UNLOCK_SECONDS
+                else -> 0L
+            }
+            val remainingPlaytime = (unlockPlaytime - targetData.playtimeSeconds).coerceAtLeast(0L)
+            if (remainingPlaytime > 0L) {
+                player.sendMessage(
+                    TextUtil.colorize(
+                        "&c${target.name} must play for &f${TextUtil.formatPlaytime(remainingPlaytime)} &cmore after rebirthing before receiving payments."
+                    )
+                )
+                return true
+            }
+        }
+        senderData.balance -= amount
+        targetData.balance += amount
+
+        ScoreboardManager.updateBoard(player)
+        ScoreboardManager.updateBoard(target)
+        player.sendMessage(TextUtil.colorize("&aPaid &f${target.name} &b${TextUtil.formatNum(amount)} ${ItemManager.COIN_NAME_PLURAL}&a."))
+        target.sendMessage(TextUtil.colorize("&aReceived &b${TextUtil.formatNum(amount)} ${ItemManager.COIN_NAME_PLURAL} &afrom &f${player.name}&a."))
+        return true
+    }
+}
+
 class StatsCommand : CommandExecutor {
 
     override fun onCommand(
@@ -59,14 +119,15 @@ class StatsCommand : CommandExecutor {
             ?: String.format("%.2f", data.multiplier)
         val targetLevel = data.level
 
-        player.sendMessage(TextUtil.colorize("&8&m----------------------------------"))
+        player.sendMessage(TextUtil.colorize("&8&m                                  "))
         player.sendMessage(TextUtil.colorize("&b&lStats &7for &f${target.name} &8($status&8)"))
-        player.sendMessage(TextUtil.colorize("&8&m----------------------------------"))
+        player.sendMessage(TextUtil.colorize("&8&m                                  "))
 
         player.sendMessage(TextUtil.colorize("&7Level: &b$targetLevel"))
         player.sendMessage(TextUtil.colorize("&7Coins: &6${data.balance}"))
         player.sendMessage(TextUtil.colorize("&7Multiplier: &d${sellMulti}x"))
         player.sendMessage(TextUtil.colorize("&7Rebirth: &e${data.rebirth}"))
+        player.sendMessage(TextUtil.colorize("&7Ascension: &5${data.ascension}"))
         player.sendMessage(TextUtil.colorize("&8&lMining"))
         player.sendMessage(TextUtil.colorize("&7Blocks Mined: &f${data.blocksMined}"))
         player.sendMessage(TextUtil.colorize("&7Playtime: &f${formatTime(data.playtimeSeconds)}"))
@@ -98,7 +159,7 @@ class StatsCommand : CommandExecutor {
             player.sendMessage(TextUtil.colorize("&7Extra XP: &a${String.format("%.2f", data.extraExperienceMultiplier)}x"))
         }
 
-        player.sendMessage(TextUtil.colorize("&8&m----------------------------------"))
+        player.sendMessage(TextUtil.colorize("&8&m                                      "))
 
         return true
     }
@@ -207,6 +268,115 @@ class SetMasteryCommand : CommandExecutor {
     }
 }
 
+class MaxStatsCommand : CommandExecutor {
+    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
+        if (!sender.hasPermission("command.dev")) {
+            sendPermissionMessage(sender)
+            return true
+        }
+
+        val target = when {
+            args.isNotEmpty() -> Bukkit.getOfflinePlayer(args[0])
+            sender is Player -> sender
+            else -> {
+                sender.sendMessage(TextUtil.colorize("&cUsage: /maxstats <player>"))
+                return true
+            }
+        }
+
+        val data = DataStore.get(target.uniqueId)
+        maxOutPlayerData(data)
+
+        target.player?.let { onlineTarget ->
+            onlineTarget.totalExperience = 0
+            onlineTarget.exp = 0f
+            ExperienceManager.restoreStoredLevel(onlineTarget)
+            ExperienceManager.clamp(onlineTarget)
+            HealthManager.apply(onlineTarget, data.level)
+            KitManager.refreshPickaxe(onlineTarget)
+            MineManager.refreshMineFor(onlineTarget.uniqueId)
+            ScoreboardManager.updateBoard(onlineTarget)
+        }
+
+        sender.sendMessage(TextUtil.colorize("&aMaxed all bounded stats for &f${target.name ?: args.firstOrNull() ?: "that player"}&a."))
+        target.player?.sendMessage(TextUtil.colorize("&aYour stats have been maxed out."))
+        return true
+    }
+
+    private fun maxOutPlayerData(data: PlayerData) {
+        data.rank = LevelManager.rankMaxLevel
+        data.rebirth = LevelManager.MAX_REBIRTH_LEVEL
+        data.level = LevelManager.getRequiredLevelForNextRebirth(LevelManager.MAX_REBIRTH_LEVEL)
+        data.balance = 1_000_000_000_000L
+        data.blocksMined = 12_500_000L
+        data.playtimeSeconds = 604_800L
+        data.playtimeSecondsAtLastRebirth = data.playtimeSeconds
+        data.kills = 10_000L
+        data.deaths = 10_000L
+
+        data.multiBreakMaxLevel = LevelManager.multiBreakMaxLevelWithScroll
+        data.multiBreakLevel = data.multiBreakMaxLevel
+        data.fortuneMaxLevel = LevelManager.fortuneMaxLevelWithScroll
+        data.fortuneLevel = data.fortuneMaxLevel
+        data.oreBoostMaxLevel = LevelManager.oreBoostMaxLevelWithScroll
+        data.oreBoostLevel = data.oreBoostMaxLevel
+        data.excavatorMaxLevel = LevelManager.excavatorMaxLevelWithScroll
+        data.excavatorLevel = data.excavatorMaxLevel
+        data.lightningMaxLevel = LevelManager.lightningMaxLevelWithScroll
+        data.lightningLevel = data.lightningMaxLevel
+        data.virtualJackhammerMaxLevel = LevelManager.virtualJackhammerMaxLevelWithScroll
+        data.virtualJackhammerLevel = data.virtualJackhammerMaxLevel
+        data.excavatorEfficiencyMaxLevel = LevelManager.excavatorEfficiencyMaxLevelWithScroll
+        data.excavatorEfficiencyLevel = data.excavatorEfficiencyMaxLevel
+        data.xpGainMaxLevel = LevelManager.xpGainMaxLevelWithScroll
+        data.xpGainLevel = data.xpGainMaxLevel
+        data.oreFrequencyMaxLevel = LevelManager.oreFrequencyMaxLevelWithScroll
+        data.oreFrequencyLevel = data.oreFrequencyMaxLevel
+        data.scrollFinderMaxLevel = LevelManager.scrollFinderMaxLevelWithScroll
+        data.scrollFinderLevel = data.scrollFinderMaxLevel
+        data.backpackMaxLevel = LevelManager.backpackMaxLevelWithScroll
+        data.backpackLevel = data.backpackMaxLevel
+
+        data.autoMinerFortuneMaxLevel = LevelManager.autoMinerFortuneMaxLevelWithScroll
+        data.autoMinerFortuneLevel = data.autoMinerFortuneMaxLevel
+        data.autoMinerEfficiencyMaxLevel = LevelManager.autoMinerEfficiencyMaxLevelWithScroll
+        data.autoMinerEfficiencyLevel = data.autoMinerEfficiencyMaxLevel
+        data.autoMinerEnergyDrinkMaxLevel = LevelManager.autoMinerEnergyDrinkMaxLevelWithScroll
+        data.autoMinerEnergyDrinkLevel = data.autoMinerEnergyDrinkMaxLevel
+        data.autoMinerBackpackMaxLevel = LevelManager.autoMinerBackpackMaxLevelWithScroll
+        data.autoMinerBackpackLevel = data.autoMinerBackpackMaxLevel
+        data.autoMinerLuckMaxLevel = LevelManager.autoMinerLuckMaxLevelWithScroll
+        data.autoMinerLuckLevel = data.autoMinerLuckMaxLevel
+
+        data.masteryLevels["oreBoost"] = 7
+        data.masteryLevels["excavator"] = 7
+        data.masteryLevels["lightning"] = 7
+        data.masteryLevels["virtualJackhammer"] = 7
+        data.upgradeScrollBonuses.clear()
+        data.multiBreakScrollBonus = 0.0
+
+        MineManager.valuables.forEach { material ->
+            data.valuableCollected[material.name] = 1_000L
+        }
+
+        data.lightningRodPlaced = true
+        data.lightningRodCount = 100
+        data.newPlayer = false
+        data.tutorialActive = false
+        data.tutorialPendingUpgradeClose = false
+        data.hasBroken = true
+        data.hasSold = true
+        data.hasSeenUpgradeHint = true
+        data.hasSeenBackpackSellHint = true
+        data.valuableBlocksBroken = 10
+        data.multiplier = 1.0 +
+            (data.rebirth * REBIRTH_MULTIPLIER_PER_REBIRTH) +
+            data.discordMultiplierBonus +
+            data.donorRankMultiplier
+        LevelManager.checkLevels(data)
+    }
+}
+
 class ResetValuableMasteriesCommand : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (!sender.hasPermission("command.dev")) {
@@ -250,6 +420,8 @@ class MobsHelpCommand : CommandExecutor {
         player.sendMessage(TextUtil.colorize("&a/rebirth &8- &7Reset your progress for rebirth perks and multiplier gains."))
         player.sendMessage(TextUtil.colorize("&a/upgrades &8- &7Open your permanent upgrades menu."))
         player.sendMessage(TextUtil.colorize("&a/autominer &8- &7Open your autominer and manage its backpack and upgrades."))
+        player.sendMessage(TextUtil.colorize("&a/clan &8- &7Create a clan, invite members, and buy clan upgrades."))
+        player.sendMessage(TextUtil.colorize("&a/trust &8- &7Grant mine access to specific players."))
         player.sendMessage(TextUtil.colorize("&a/store &8- &7Open the server store menu for premium perks and bundles."))
         player.sendMessage(TextUtil.colorize("&8&m------------------------------------------------"))
         return true
@@ -308,8 +480,22 @@ class SpawnCommand : CommandExecutor {
 class MineCommand : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         val player = sender as? Player ?: return true
-        MineManager.ensureMineFor(player)
-        val location = MineManager.getPlayerMineCenterLocation(player) ?: return true
+        val location = if (args.isEmpty()) {
+            MineManager.ensureMineFor(player)
+            MineManager.getPlayerMineCenterLocation(player)
+        } else {
+            val target = Bukkit.getPlayerExact(args[0])
+            if (target == null || !target.isOnline) {
+                player.sendMessage(TextUtil.colorize("&cThat player's mine is only available while they are online."))
+                return true
+            }
+            MineManager.ensureMineFor(target)
+            if (!MineAccessManager.canAccessMine(target.uniqueId, player)) {
+                player.sendMessage(TextUtil.colorize("&cYou do not have access to ${target.name}'s mine."))
+                return true
+            }
+            MineManager.getPlayerMineCenterLocation(target)
+        } ?: return true
         player.teleport(location.add(0.0, 1.0, 0.0))
         TutorialManager.showMineHelpOnce(player)
         return true
@@ -320,10 +506,12 @@ class AutoMinerCommand(private val gui: AutoMinerGui) : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         val player = sender as? Player ?: return true
         if (DataStore.get(player.uniqueId).rebirth < 1) {
-            player.sendTitle(
-                TextUtil.colorize("&cPrestige 1 Required"),
-                TextUtil.colorize("&7You need prestige 1 before using autominers."),
-                10, 60, 10
+            player.showTitle(
+                Title.title(
+                    TextUtil.toComponent("&cRebirth A Required"),
+                    TextUtil.toComponent("&7You need rebirth A before using autominers."),
+                    Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(3), Duration.ofMillis(500))
+                )
             )
             player.playSound(player.location, "block.note_block.bass", 1f, 1f)
             return true
@@ -385,24 +573,6 @@ class NewPlayerCommand : CommandExecutor {
     }
 }
 
-class NoobProtectionCommand : CommandExecutor {
-    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        val player = sender as? Player ?: return true
-        val data = DataStore.get(player.uniqueId)
-        if (!data.hasUsedNoobProtection) {
-            data.hasUsedNoobProtection = true
-            data.noobProtection = true
-            player.sendMessage(TextUtil.colorize("&7Noob protection activated for 15 minutes!"))
-            Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
-                data.noobProtection = false
-            }, 20L * 60L * 15L)
-        } else {
-            player.sendMessage(TextUtil.colorize("&7You have already used noob protection."))
-        }
-        return true
-    }
-}
-
 class FlyCommand : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         val player = sender as? Player ?: return true
@@ -450,6 +620,8 @@ class ResetCommand : CommandExecutor {
             return true
         }
 
+        val ownerTriggeredFullWipe = sender is Player && ScoreboardManager.debugPrimaryGroup(sender).equals("owner", ignoreCase = true)
+
         val targetName = args.getOrNull(0) ?: if (sender is Player) sender.name else null
         if (targetName == null) {
             sender.sendMessage(TextUtil.colorize("&cYou must specify a player when running this command from console."))
@@ -458,28 +630,38 @@ class ResetCommand : CommandExecutor {
 
         if (targetName == "all") {
             DataStore.all().forEach { (uuid, data) ->
-                resetPlayerData(data, clearEarnedProgress = false)
+                resetPlayerData(data, clearEarnedProgress = ownerTriggeredFullWipe)
 
                 val p = Bukkit.getPlayer(uuid)
                 if (p != null) {
-                    applyResetToOnlinePlayer(p, data)
+                    applyResetToOnlinePlayer(p, data, clearEarnedProgress = ownerTriggeredFullWipe)
                 }
             }
-            sender.sendMessage(TextUtil.colorize("&cMoney and upgrades reset for &eALL PLAYERS&c."))
+            sender.sendMessage(
+                TextUtil.colorize(
+                    if (ownerTriggeredFullWipe) "&cAll stats reset for &eALL PLAYERS&c."
+                    else "&cMoney and upgrades reset for &eALL PLAYERS&c."
+                )
+            )
             return true
         }
 
         val offlineTarget = Bukkit.getOfflinePlayer(targetName)
         val data = DataStore.get(offlineTarget.uniqueId)
-        val clearEarnedProgress = sender is Player && sender.uniqueId == offlineTarget.uniqueId
+        val clearEarnedProgress = ownerTriggeredFullWipe || (sender is Player && sender.uniqueId == offlineTarget.uniqueId)
         resetPlayerData(data, clearEarnedProgress = clearEarnedProgress)
 
         val target = offlineTarget.player
         if (target != null) {
-            applyResetToOnlinePlayer(target, data)
+            applyResetToOnlinePlayer(target, data, clearEarnedProgress = clearEarnedProgress)
         }
 
-        sender.sendMessage(TextUtil.colorize("&cMoney and upgrades reset for &e$targetName&c."))
+        sender.sendMessage(
+            TextUtil.colorize(
+                if (clearEarnedProgress) "&cAll stats reset for &e$targetName&c."
+                else "&cMoney and upgrades reset for &e$targetName&c."
+            )
+        )
         return true
     }
 }
@@ -527,34 +709,6 @@ class GiveCoinsCommand : CommandExecutor {
         ScoreboardManager.updateBoard(target)
         sender.sendMessage(TextUtil.colorize("&aAdded &e$amount ${ItemManager.COIN_NAME_PLURAL} &ato ${offline.name}."))
         target.sendMessage(TextUtil.colorize("&aYou received &e$amount ${ItemManager.COIN_NAME_PLURAL}&a."))
-        return true
-    }
-}
-
-class GiveTokensCommand : CommandExecutor {
-    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        if (sender is Player && !sender.hasPermission("command.givetokens")) {
-            sendPermissionMessage(sender)
-            return true
-        }
-
-        val targetName = args.getOrNull(0)
-        if (targetName == null) {
-            sender.sendMessage(TextUtil.colorize("&cUsage: /givetoken <player> <amount>"))
-            return true
-        }
-
-        val offline = Bukkit.getOfflinePlayer(targetName)
-        val target = Bukkit.getPlayer(targetName)
-        val amount = args.getOrNull(1)?.toLongOrNull() ?: 1L
-
-        val data = DataStore.get(offline.uniqueId)
-        data.tokens += amount
-        if (target != null) ScoreboardManager.updateBoard(target)
-
-        sender.sendMessage(TextUtil.colorize("&aAdded &e$amount ${ItemManager.TOKEN_NAME_PLURAL} &ato ${offline.name}."))
-        target?.sendMessage(TextUtil.colorize("&aYou received &e$amount ${ItemManager.TOKEN_NAME_PLURAL}&a."))
-
         return true
     }
 }
@@ -627,12 +781,12 @@ class StartEventCommand : CommandExecutor {
         if (args.isNotEmpty()) {
             val forcedType = BossbarManager.forceEventType(args[0])
             if (forcedType.isEmpty()) {
-                sender.sendMessage(TextUtil.colorize("&cUsage: /startevent [goldrush|rareores] [normal|rare|mythic|god]"))
+                sender.sendMessage(TextUtil.colorize("&cUsage: /startevent [goldrush|rareores] [normal|rare|mythic|god|secret]"))
                 return true
             }
             val forcedRarity = BossbarManager.forceEventRarity(args.getOrNull(1) ?: "normal")
             if (forcedRarity.isEmpty()) {
-                sender.sendMessage(TextUtil.colorize("&cUsage: /startevent [goldrush|rareores] [normal|rare|mythic|god]"))
+                sender.sendMessage(TextUtil.colorize("&cUsage: /startevent [goldrush|rareores] [normal|rare|mythic|god|secret]"))
                 return true
             }
 
@@ -805,10 +959,11 @@ class OnMinerPurchaseCommand : CommandExecutor {
         data.donorRankMultiplier = 1.0
         data.multiplier += data.donorRankMultiplier
         ScoreboardManager.updateBoard(target)
+        SessionTimelineManager.record(target, "Received Miner Purchase perks (+1.0x multiplier, 1.1x proc chance)")
 
         sender.sendMessage(TextUtil.colorize("&aAdded &b+1.0x &amultiplier to &f${target.name}&a."))
-        target.sendMessage(TextUtil.colorize("&aYour miner multiplier increased by &b+1.0x&a."))
-        sendPurchaseCongratulations(target, "Miner Purchase", "+1.0x multiplier")
+        target.sendMessage(TextUtil.colorize("&aYour miner purchase added &b+1.0x &amultiplier and &b+10% &aproc chance."))
+        sendPurchaseCongratulations(target, "Miner Purchase", "+1.0x multiplier | +10% proc chance")
         return true
     }
 }
@@ -835,10 +990,11 @@ class OnExcavatorPurchaseCommand : CommandExecutor {
         data.extraExperienceMultiplier *= 3.0
         MineManager.refreshMineFor(target.uniqueId)
         ScoreboardManager.updateBoard(target)
+        SessionTimelineManager.record(target, "Received Excavator Purchase perks (+2.5x multiplier, 2.5x mine weight, +2x XP, 1.25x proc chance)")
 
         sender.sendMessage(TextUtil.colorize("&aAdded &b+2.5x &amultiplier, &b2.5x &amine weight, and &b+2x &aXP gain to &f${target.name}&a."))
-        target.sendMessage(TextUtil.colorize("&aYour excavator purchase added &b+2.5x &amultiplier, &b2.5x &avaluable weight in the mine area, and &b+2x &aXP gain."))
-        sendPurchaseCongratulations(target, "Excavator Purchase", "+2.5x multiplier | 2.5x mine weight | +2x XP")
+        target.sendMessage(TextUtil.colorize("&aYour excavator purchase added &b+2.5x &amultiplier, &b2.5x &avaluable weight in the mine area, &b+2x &aXP gain, and &b+25% &aproc chance."))
+        sendPurchaseCongratulations(target, "Excavator Purchase", "+2.5x multiplier | 2.5x mine weight | +2x XP | +25% proc chance")
         return true
     }
 }
@@ -865,10 +1021,11 @@ class OnNukerPurchaseCommand : CommandExecutor {
         data.extraExperienceMultiplier *= 5.0
         MineManager.refreshMineFor(target.uniqueId)
         ScoreboardManager.updateBoard(target)
+        SessionTimelineManager.record(target, "Received Nuker Purchase perks (+5.0x multiplier, 5.0x mine weight, +4x XP, 1.5x proc chance)")
 
         sender.sendMessage(TextUtil.colorize("&aAdded &b+5.0x &amultiplier, &b5.0x &amine weight, and &b+4x &aXP gain to &f${target.name}&a."))
-        target.sendMessage(TextUtil.colorize("&aYour nuker purchase added &b+5.0x &amultiplier, &b5.0x &avaluable weight in the mine area, and &b+4x &aXP gain."))
-        sendPurchaseCongratulations(target, "Nuker Purchase", "+5.0x multiplier | 5.0x mine weight | +4x XP")
+        target.sendMessage(TextUtil.colorize("&aYour nuker purchase added &b+5.0x &amultiplier, &b5.0x &avaluable weight in the mine area, &b+4x &aXP gain, and &b+50% &aproc chance."))
+        sendPurchaseCongratulations(target, "Nuker Purchase", "+5.0x multiplier | 5.0x mine weight | +4x XP | +50% proc chance")
         return true
     }
 }
@@ -919,10 +1076,12 @@ class DiscordLinkRewardsCommand : CommandExecutor {
 
         player.allowFlight = true
 
-        player.sendTitle(
-            TextUtil.colorize("&9Discord Linked!"),
-            TextUtil.colorize("&a+0.25x Multiplier &7| &e+2500 Coins &7| &bFlight Unlocked"),
-            10, 70, 20
+        player.showTitle(
+            Title.title(
+                TextUtil.toComponent("&9Discord Linked!"),
+                TextUtil.toComponent("&a+0.25x Multiplier &7| &e+2500 Coins &7| &bFlight Unlocked"),
+                Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofSeconds(1))
+            )
         )
 
         player.sendMessage(TextUtil.colorize("&aCongrats on linking your Discord account!"))
@@ -970,3 +1129,10 @@ class GiveScrollCommand : CommandExecutor {
     }
 }
 
+class AscendCommand(private val gui: RankUpGui) : CommandExecutor {
+    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
+        val player = sender as? Player ?: return true
+        gui.openAscend(player)
+        return true
+    }
+}

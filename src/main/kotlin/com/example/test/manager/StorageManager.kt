@@ -3,11 +3,12 @@ package com.example.test
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import java.util.*
 
 object StorageManager {
-    const val slotsPerPage = 21
+    val slotsPerPage = MineManager.valuableDrops.size
     const val maxPages = 1
-    const val capacity = slotsPerPage
+    val capacity = slotsPerPage
 
     fun getContents(player: Player): MutableList<ItemStack> {
         val stored = getActiveStorage(player)
@@ -65,6 +66,22 @@ object StorageManager {
         return itemStack.amount
     }
 
+    fun addDropToBackpack(ownerId: UUID, itemStack: ItemStack): Int {
+        val slot = MineManager.valuableDrops.indexOf(itemStack.type)
+        if (slot == -1 || itemStack.amount <= 0) return 0
+
+        val data = DataStore.get(ownerId)
+        val contents = getNormalizedContents(data.storageContents)
+        val existing = contents[slot]
+        if (existing.type == Material.AIR) {
+            contents[slot] = ItemStack(itemStack.type, itemStack.amount)
+        } else {
+            existing.amount += itemStack.amount
+        }
+        data.storageContents = contents
+        return itemStack.amount
+    }
+
     fun addDropToDeathpack(player: Player, itemStack: ItemStack): Int {
         val slot = MineManager.valuableDrops.indexOf(itemStack.type)
         if (slot == -1 || itemStack.amount <= 0) return 0
@@ -104,13 +121,14 @@ object StorageManager {
             contents[index] = ItemStack(Material.AIR)
         }
 
-        totalValue = applyDeathpackValueMultiplier(player, totalValue)
-
-        if (totalValue > 0L) {
-            DataStore.get(player.uniqueId).hasSold = true
-            DataStore.get(player.uniqueId).balance += totalValue
-            setContents(player, contents)
-        }
+        DataStore.get(player.uniqueId).hasSold = true
+        DataStore.get(player.uniqueId).balance += totalValue
+        setContents(player, contents)
+        TutorialManager.handleBackpackSold(player)
+        SessionTimelineManager.record(
+            player,
+            "Sold all backpack contents: ${TextUtil.formatNum(totalItems)} items for ${TextUtil.formatNum(totalValue)} ${ItemManager.COIN_NAME_PLURAL}"
+        )
 
         return SellResult(totalItems, totalValue)
     }
@@ -131,6 +149,11 @@ object StorageManager {
         DataStore.get(player.uniqueId).hasSold = true
         DataStore.get(player.uniqueId).balance += totalValue
         setContents(player, contents)
+        TutorialManager.handleBackpackSold(player)
+        SessionTimelineManager.record(
+            player,
+            "Sold ${TextUtil.formatNum(totalItems)}x ${material.name.lowercase().replace('_', ' ')} for ${TextUtil.formatNum(totalValue)} ${ItemManager.COIN_NAME_PLURAL}"
+        )
 
         return SellResult(totalItems, totalValue)
     }
@@ -154,6 +177,18 @@ object StorageManager {
 
     fun getFilledSlotCount(player: Player): Int = getContents(player).count { it.type != Material.AIR }
 
+    fun getStoredItemCount(player: Player): Long = getContents(player).sumOf { item ->
+        if (item.type == Material.AIR || item.amount <= 0) 0L else item.amount.toLong()
+    }
+
+    fun getBackpackCapacity(player: Player): Long = getBackpackCapacity(DataStore.get(player.uniqueId))
+
+    fun getBackpackCapacity(data: PlayerData): Long =
+        Long.MAX_VALUE
+
+    fun getBackpackCapacityForLevel(level: Int): Long =
+        Long.MAX_VALUE
+
     fun getBaseSellValue(material: Material): Long? {
         val index = MineManager.valuableDrops.indexOf(material)
         return if (index == -1) null else MineManager.valuableSellValues[index]
@@ -166,6 +201,7 @@ object StorageManager {
 
     fun resolveSellMultiplier(player: Player): Double {
         val multiplier = KitManager.getEffectiveSellMultiplier(player)
+        if (TutorialManager.isTutorialMode(player)) return multiplier
         return if (BossbarManager.hasActiveSellMultiplier()) multiplier * BossbarManager.multiplier else multiplier
     }
 

@@ -58,6 +58,7 @@ object DataIntegrityManager {
 
         val startingUpgradeLevel = (1 + data.rebirth).coerceAtLeast(1)
         changed = ensureStartingUpgradeFloor(data, startingUpgradeLevel) || changed
+        changed = MasteryManager.reconcile(data) || changed
 
         val expectedMultiplier = getExpectedTotalMultiplier(data)
         if (kotlin.math.abs(data.multiplier - expectedMultiplier) > 0.0001) {

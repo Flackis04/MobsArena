@@ -11,6 +11,7 @@ import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.FoodLevelChangeEvent
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.player.*
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
@@ -40,6 +41,7 @@ class PlayerListener : Listener {
         if (!data.flight) {
             player.isFlying = false
         }
+        LightningRodManager.handleJoin(player)
         KitManager.ensureRankArmorState(player)
         data.playtimeSeconds = player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20L
         ScoreboardManager.refreshTabListForAll()
@@ -49,12 +51,19 @@ class PlayerListener : Listener {
 
     @EventHandler
     fun onQuit(event: PlayerQuitEvent) {
+        LightningRodManager.handleQuit(event.player)
         MineManager.removeMineFor(event.player.uniqueId)
         Bukkit.getScheduler().runTask(TestPlugin.instance, Runnable {
             ScoreboardManager.refreshTabListForAll()
         })
         HeadHunterManager.updatePossibleTargets()
         BossbarManager.removePlayer(event.player)
+    }
+
+    @EventHandler
+    fun onInventoryClose(event: InventoryCloseEvent) {
+        val player = event.player as? Player ?: return
+        TutorialManager.handleInventoryClosed(player)
     }
 
     @EventHandler
@@ -112,6 +121,7 @@ class PlayerListener : Listener {
             val data = DataStore.get(player.uniqueId)
             data.balance += amount
             ScoreboardManager.updateBoard(player)
+            SessionTimelineManager.record(player, "Redeemed banknote for ${TextUtil.formatNum(amount)} ${ItemManager.COIN_NAME_PLURAL}")
             player.sendMessage(TextUtil.colorize("&aRedeemed a banknote for &b${TextUtil.formatNum(amount)} ${ItemManager.COIN_NAME_PLURAL}&a!"))
             player.playSound(player.location, "entity.player.levelup", 0.5f, 1.2f)
             return
@@ -124,6 +134,7 @@ class PlayerListener : Listener {
                 val data = DataStore.get(player.uniqueId)
                 data.balance += amount
                 ScoreboardManager.updateBoard(player)
+                SessionTimelineManager.record(player, "Redeemed x$amount ${ItemManager.COIN_NAME_PLURAL}")
                 player.sendMessage(TextUtil.colorize("&aYou redeemed &bx$amount ${ItemManager.COIN_NAME_PLURAL}&a!"))
                 player.playSound(player.location, "entity.player.levelup", 0.5f, 1.2f)
             }
@@ -199,21 +210,6 @@ class PlayerListener : Listener {
             player.addPotionEffect(PotionEffect(PotionEffectType.SLOW_FALLING, 2, 5, false, false, false))
             player.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, 20, 0, false, false, false))
         }, 1L)
-
-        Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
-            val data = DataStore.get(player.uniqueId)
-            if (data.newPlayer != null) return@Runnable
-            if (data.hasTouched) return@Runnable
-            if (player.location.blockY == 66) {
-                player.sendTitle(
-                    TextUtil.colorize("&bYour mine is where the money starts"),
-                    TextUtil.colorize("&7Break valuable ores, then sell them from your backpack."),
-                    10, 60, 10
-                )
-                player.playSound(player.location, "entity.experience_orb.pickup", 1f, 1.2f)
-                data.hasTouched = true
-            }
-        }, 50L)
     }
 
     @EventHandler
@@ -246,11 +242,6 @@ class PlayerListener : Listener {
             return
         }
         CombatManager.tagPlayers(attacker, victim)
-        if (attackerData.noobProtection) attackerData.noobProtection = false
-        if (victimData.noobProtection) {
-            attacker.sendTitle("", TextUtil.colorize("&cPlayer has noob-protection on!"), 0, 40, 0)
-            event.isCancelled = true
-        }
     }
 
 }

@@ -15,7 +15,7 @@ class AutoMinerBackpackGui {
         private val VALUABLE_SLOTS = listOf(
             9, 10, 11, 12, 13, 14, 15, 16, 17,
             18, 19, 20, 21, 22, 23, 24, 25, 26,
-            27, 28, 29
+            27, 28, 29, 30, 31
         )
         private val activeViews = mutableMapOf<UUID, Gui>()
 
@@ -87,6 +87,10 @@ class AutoMinerBackpackGui {
                 if (result.totalItems <= 0L) {
                     player.playSound(player.location, "block.note_block.bass", 1f, 1f)
                 } else {
+                    SessionTimelineManager.record(
+                        player,
+                        "Collected ${TextUtil.formatNum(result.totalItems)} items from autominer backpack"
+                    )
                     player.playSound(player.location, "entity.experience_orb.pickup", 1f, 1f)
                     player.sendMessage(
                         TextUtil.colorize(

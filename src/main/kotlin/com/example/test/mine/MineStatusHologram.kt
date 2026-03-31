@@ -11,6 +11,10 @@ import org.joml.Vector3f
 
 object MineStatusHologram {
     private const val HOLOGRAM_TAG = "mine_status_hologram"
+    private const val REFRESH_INTERVAL_TICKS = 40L
+    private const val BASE_HEIGHT_OFFSET = 10.5
+    private const val TITLE_SCALE = 5.4
+    private const val LINE_SCALE = 4.3
 
     private var updateTask: BukkitTask? = null
     private val lineDisplays = mutableMapOf<String, TextDisplay>()
@@ -23,32 +27,45 @@ object MineStatusHologram {
         updateTask?.cancel()
         updateTask = Bukkit.getScheduler().runTaskTimer(TestPlugin.instance, Runnable {
             refresh()
-        }, 20L, 20L)
+        }, REFRESH_INTERVAL_TICKS, REFRESH_INTERVAL_TICKS)
     }
 
     private fun refresh() {
         val validLineIds = mutableSetOf<String>()
         for (mine in MineManager.getPlayerMines()) {
-            val baseLocation = MineManager.getPlayerMineCenterLocation(mine.ownerId, 5.5) ?: continue
+            val baseLocation = MineManager.getPlayerMineCenterLocation(mine.ownerId, BASE_HEIGHT_OFFSET) ?: continue
             val ownerName = Bukkit.getOfflinePlayer(mine.ownerId).name ?: "Unknown"
-
+            val ownerData = DataStore.get(mine.ownerId)
+            val ownerRank = formatDisplayedRank(ownerData)
+            val netMineWeight = String.format("%.2f", MineManager.getNetMineWeightMultiplier(mine.ownerId))
+            val totalBlocksMined = TextUtil.formatNum(ownerData.blocksMined)
             val titleId = "${mine.ownerId}:title"
-            val statusId = "${mine.ownerId}:status"
+            val ownerId = "${mine.ownerId}:owner"
+            val blocksId = "${mine.ownerId}:blocks"
+            val weightId = "${mine.ownerId}:weight"
             val progressId = "${mine.ownerId}:progress"
             validLineIds += titleId
-            validLineIds += statusId
+            validLineIds += ownerId
+            validLineIds += blocksId
+            validLineIds += weightId
             validLineIds += progressId
 
-            val title = ensureDisplay(baseLocation.clone().add(0.0, 2.2, 0.0), titleId, 2.7)
-            val status = ensureDisplay(baseLocation.clone().add(0.0, 1.2, 0.0), statusId, 2.15)
-            val progress = ensureDisplay(baseLocation.clone().add(0.0, 0.2, 0.0), progressId, 2.15)
+            val title = ensureDisplay(baseLocation.clone().add(0.0, 5.0, 0.0), titleId, TITLE_SCALE)
+            val owner = ensureDisplay(baseLocation.clone().add(0.0, 3.2, 0.0), ownerId, LINE_SCALE)
+            val blocks = ensureDisplay(baseLocation.clone().add(0.0, 1.6, 0.0), blocksId, LINE_SCALE)
+            val weight = ensureDisplay(baseLocation.clone().add(0.0, 0.0, 0.0), weightId, LINE_SCALE)
+            val progress = ensureDisplay(baseLocation.clone().add(0.0, -1.6, 0.0), progressId, LINE_SCALE)
 
-            styleDisplay(title, baseLocation.clone().add(0.0, 2.2, 0.0), 2.7)
-            styleDisplay(status, baseLocation.clone().add(0.0, 1.2, 0.0), 2.15)
-            styleDisplay(progress, baseLocation.clone().add(0.0, 0.2, 0.0), 2.15)
+            styleDisplay(title, baseLocation.clone().add(0.0, 5.0, 0.0), TITLE_SCALE)
+            styleDisplay(owner, baseLocation.clone().add(0.0, 3.2, 0.0), LINE_SCALE)
+            styleDisplay(blocks, baseLocation.clone().add(0.0, 1.6, 0.0), LINE_SCALE)
+            styleDisplay(weight, baseLocation.clone().add(0.0, 0.0, 0.0), LINE_SCALE)
+            styleDisplay(progress, baseLocation.clone().add(0.0, -1.6, 0.0), LINE_SCALE)
 
-            title.text(TextUtil.toComponent("<#6EF8FF>-> &fMine Status <#6EF8FF>->"))
-            status.text(TextUtil.toComponent("<#A89064>Mine Owner: <#6EF8FF>$ownerName"))
+            title.text(TextUtil.toComponent("<#6EF8FF>⛏ &fMine Status <#6EF8FF>⛏"))
+            owner.text(TextUtil.toComponent("<#A89064>Mine Owner: <#6EF8FF>$ownerName <#6C6458>| <#A89064>Rank: <#6EF8FF>$ownerRank"))
+            blocks.text(TextUtil.toComponent("<#A89064>Total Blocks Mined: <#6EF8FF>$totalBlocksMined"))
+            weight.text(TextUtil.toComponent("<#A89064>Net Mine Weight: <#6EF8FF>${netMineWeight}x"))
             progress.text(
                 TextUtil.toComponent(
                     "<#A89064>Mined: <#6EF8FF>${MineManager.getClearedPercentText()} <#6C6458>| <#A89064>Reset In <#FFFFFF>${MineManager.getTimeUntilResetText()}"
@@ -59,7 +76,6 @@ object MineStatusHologram {
     }
 
     private fun ensureDisplay(location: org.bukkit.Location, lineId: String, scale: Double): TextDisplay {
-        cleanupDuplicateDisplays(lineId)
         val existing = lineDisplays[lineId]
         if (existing != null && existing.isValid) return existing
 
@@ -83,28 +99,13 @@ object MineStatusHologram {
         display.isShadowed = false
         display.setDefaultBackground(false)
         display.backgroundColor = Color.fromARGB(0, 0, 0, 0)
-        display.lineWidth = 1000
+        display.lineWidth = 2000
         display.transformation = Transformation(
             Vector3f(0f, 0f, 0f),
             Quaternionf(),
             Vector3f(scale.toFloat(), scale.toFloat(), scale.toFloat()),
             Quaternionf()
         )
-    }
-
-    private fun cleanupDuplicateDisplays(lineId: String) {
-        val world = Bukkit.getWorld("mine") ?: return
-        val cachedDisplay = lineDisplays[lineId]
-        world.getEntitiesByClass(TextDisplay::class.java)
-            .filter { it.scoreboardTags.contains("$HOLOGRAM_TAG:$lineId") }
-            .forEach { display ->
-                if (cachedDisplay != null && display.uniqueId == cachedDisplay.uniqueId) return@forEach
-                if (cachedDisplay == null && lineDisplays[lineId] == null && display.isValid) {
-                    lineDisplays[lineId] = display
-                    return@forEach
-                }
-                display.remove()
-            }
     }
 
     private fun removeStaleDisplays(validLineIds: Set<String>) {

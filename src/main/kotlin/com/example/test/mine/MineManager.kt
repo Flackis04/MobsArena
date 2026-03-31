@@ -14,6 +14,7 @@ import org.bukkit.scheduler.BukkitTask
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.max
+import kotlin.math.pow
 
 object MineManager {
     private const val HALF_BOX_SIZE = 20 //max = 20 or 60
@@ -64,7 +65,9 @@ object MineManager {
         Material.BEACON,
         Material.OCHRE_FROGLIGHT,
         Material.VERDANT_FROGLIGHT,
-        Material.PEARLESCENT_FROGLIGHT
+        Material.PEARLESCENT_FROGLIGHT,
+        Material.SPAWNER,
+        Material.TRIAL_SPAWNER
     )
 
     val valuableNames = listOf(
@@ -88,7 +91,9 @@ object MineManager {
         "<#87F5FF>BEACON",
         "<#D89A4A>OCHRE FROGLIGHT",
         "<#6FD66F>VERDANT FROGLIGHT",
-        "<#FFB7FF>PEARLESCENT FROGLIGHT"
+        "<#FFB7FF>PEARLESCENT FROGLIGHT",
+        "<#6A5ACD>MONSTER SPAWNER",
+        "<#E6E6FA>TRIAL SPAWNER"
     )
 
     val valuableDrops = listOf(
@@ -112,7 +117,9 @@ object MineManager {
         Material.BEACON,
         Material.OCHRE_FROGLIGHT,
         Material.VERDANT_FROGLIGHT,
-        Material.PEARLESCENT_FROGLIGHT
+        Material.PEARLESCENT_FROGLIGHT,
+        Material.SPAWNER,
+        Material.TRIAL_SPAWNER
     )
 
     val valuableSellValues = listOf(
@@ -136,7 +143,9 @@ object MineManager {
         80000L,
         180000L,
         300000L,
-        500000L
+        500000L,
+        900000L,
+        1500000L
     )
 
     val valuableSpawnWeights = listOf(
@@ -160,7 +169,9 @@ object MineManager {
         0.000075,
         0.000016, // 0.000011 this value works
         0.000008,
-        0.000004
+        0.000004,
+        0.0000025,
+        0.000001
     )
 
     val nonDroppableBlocks = setOf(
@@ -190,7 +201,9 @@ object MineManager {
         Material.BEACON,
         Material.OCHRE_FROGLIGHT,
         Material.VERDANT_FROGLIGHT,
-        Material.PEARLESCENT_FROGLIGHT
+        Material.PEARLESCENT_FROGLIGHT,
+        Material.SPAWNER,
+        Material.TRIAL_SPAWNER
     )
 
     private val world: World? get() = Bukkit.getWorld("mine")
@@ -242,6 +255,7 @@ object MineManager {
             mineOre.remove(locKey(block.location))
             block.type = Material.AIR
         }
+        clearMineBedrockFloor(w, mineData.mine)
     }
 
     fun containsMine(loc: Location): Boolean = getMineAt(loc) != null
@@ -263,19 +277,33 @@ object MineManager {
         return data.hasDonorRank || player.hasPermission("group.miner") || player.hasPermission("rank.miner")
     }
 
+    fun getProcMultiplier(player: Player): Double =
+        getProcMultiplier(DataStore.get(player.uniqueId), player)
+
+    fun getProcMultiplier(data: PlayerData, player: Player? = null): Double = when {
+        data.donorRankMultiplier >= 5.0 -> 1.5
+        data.donorRankMultiplier >= 2.5 -> 1.25
+        data.donorRankMultiplier >= 1.0 -> 1.1
+        player != null && hasMinerRank(player) -> 1.1
+        else -> 1.0
+    }
+
+    fun applyProcMultiplier(baseChance: Double, player: Player): Double =
+        (baseChance * getProcMultiplier(player)).coerceAtMost(1.0)
+
     fun canBreakMineBlock(player: Player, loc: Location): Boolean {
         val owner = getMineOwnerAt(loc) ?: return false
-        return owner == player.uniqueId || hasMinerRank(player)
+        return owner == player.uniqueId || MineAccessManager.canAccessMine(owner, player.uniqueId) || hasMinerRank(player)
     }
 
     fun canBreakMineArea(player: Player, loc: Location): Boolean {
         val owner = getMineAreaOwnerAt(loc) ?: return false
-        return owner == player.uniqueId || hasMinerRank(player)
+        return owner == player.uniqueId || MineAccessManager.canAccessMine(owner, player.uniqueId) || hasMinerRank(player)
     }
 
     fun canBreakMineAreaIgnoringY(player: Player, loc: Location): Boolean {
         val owner = getMineAreaOwnerAtIgnoringY(loc) ?: return false
-        return owner == player.uniqueId || hasMinerRank(player)
+        return owner == player.uniqueId || MineAccessManager.canAccessMine(owner, player.uniqueId) || hasMinerRank(player)
     }
 
     fun setMine(valuableWeightMultiplier: Double = 1.0) {
@@ -296,8 +324,8 @@ object MineManager {
         Bukkit.getOnlinePlayers().forEach { player ->
             val mineData = playerMines[player.uniqueId] ?: return@forEach
             if (player.world != w) return@forEach
-            if (mineData.mineArea.contains(player.location) && player.location.y <= MINE_MAX_Y + 1) {
-                teleportToMineTop(player, mineData.centerX, mineData.centerZ, w)
+            if (mineData.mine.contains(player.location)) {
+                teleportPlayerToMineTopAtCurrentXZ(player, mineData.mine, w)
             }
         }
     }
@@ -320,15 +348,14 @@ object MineManager {
 
         Bukkit.getOnlinePlayers().forEach { player ->
             if (player.world != w) return@forEach
-            if (mineData.mineArea.contains(player.location) && player.location.y <= MINE_MAX_Y + 1) {
-                teleportToMineTop(player, mineData.centerX, mineData.centerZ, w)
+            if (mineData.mine.contains(player.location)) {
+                teleportPlayerToMineTopAtCurrentXZ(player, mineData.mine, w)
             }
         }
     }
 
     fun getTotalValuableMultiplier(valuableWeightMultiplier: Double = 1.0): Double {
-        val onlinePlayerMultiplier = (1.0 + (Bukkit.getOnlinePlayers().size.toDouble() / 20.0)).coerceAtMost(2.5)
-        return valuableWeightMultiplier * onlinePlayerMultiplier * getMineAreaPlayerBonusMultiplier()
+        return valuableWeightMultiplier * getMineAreaPlayerBonusMultiplier()
     }
 
     fun getNetMineWeightMultiplier(ownerId: UUID): Double {
@@ -380,7 +407,6 @@ object MineManager {
         resetQueued = false
         if (RareOresEventManager.isActive()) {
             setMine(RareOresEventManager.getValuableWeightMultiplier())
-            RareOresEventManager.restartActiveTimer()
             Bukkit.broadcast(TextUtil.toComponent("&9Mine Reset!"))
             return
         }
@@ -406,7 +432,7 @@ object MineManager {
     fun getPlayerMineCenterLocation(player: Player, heightOffset: Double = 0.0): Location? {
         val w = world ?: return null
         val mineData = playerMines[player.uniqueId] ?: return null
-        return Location(w, mineData.centerX + 0.5, MINE_MAX_Y + 0.5 + heightOffset, mineData.centerZ + 0.5)
+        return Location(w, mineData.centerX + 0.5, MINE_MAX_Y + 0.5 + heightOffset + 1, mineData.centerZ + 0.5)
     }
 
     fun getPlayerMineCenterLocation(ownerId: UUID, heightOffset: Double = 0.0): Location? {
@@ -414,6 +440,8 @@ object MineManager {
         val mineData = playerMines[ownerId] ?: return null
         return Location(w, mineData.centerX + 0.5, MINE_MAX_Y + 0.5 + heightOffset, mineData.centerZ + 0.5)
     }
+
+    fun getPlayerMine(ownerId: UUID): PlayerMine? = playerMines[ownerId]
 
     fun getPlayerMines(): List<PlayerMine> = playerMines.values.toList()
 
@@ -431,9 +459,7 @@ object MineManager {
     }
 
     private fun canUseSavedMineCenter(ownerId: UUID, centerX: Int, centerZ: Int): Boolean =
-        playerMines.values.none { existing ->
-            existing.ownerId != ownerId && existing.centerX == centerX && existing.centerZ == centerZ
-        }
+        isMineCenterAvailable(ownerId, centerX, centerZ)
 
     fun getPlayersInMineArea(): Int {
         val w = world ?: return 0
@@ -546,7 +572,7 @@ object MineManager {
         return selectMineMaterial(totalValuableMultiplier)
     }
 
-    fun triggerLightningUpgrade(player: Player): Boolean {
+    fun triggerLightningUpgrade(player: Player, sendMessage: Boolean = true): Boolean {
         val data = DataStore.get(player.uniqueId)
         val mineData = playerMines[player.uniqueId] ?: return false
         val targetBlock = getRandomLightningTargetBlock(mineData.mine) ?: return false
@@ -559,7 +585,9 @@ object MineManager {
                 upgradeBlockToNextLightningTier(block, data)
             }
         }
-        player.sendMessage(TextUtil.colorize("&eLightning upgraded a section of the mine."))
+        if (sendMessage) {
+            player.sendMessage(TextUtil.colorize("&eLightning upgraded a section of the mine."))
+        }
         return true
     }
 
@@ -670,11 +698,26 @@ object MineManager {
         return null
     }
 
+    fun upgradeBlockByTiers(block: Block, data: PlayerData, tiers: Int): Boolean {
+        val appliedTiers = tiers.coerceAtLeast(0)
+        if (appliedTiers <= 0) return false
+
+        var currentType = getStoredOre(block.location) ?: block.type
+        var upgraded = false
+        repeat(appliedTiers) {
+            val nextType = getNextLightningTier(currentType, data) ?: return@repeat
+            currentType = nextType
+            upgraded = true
+        }
+
+        if (!upgraded) return false
+        mineOre[locKey(block.location)] = currentType
+        block.type = currentType
+        return true
+    }
+
     private fun upgradeBlockToNextLightningTier(block: Block, data: PlayerData) {
-        val actualType = getStoredOre(block.location) ?: block.type
-        val nextType = getNextLightningTier(actualType, data) ?: return
-        mineOre[locKey(block.location)] = nextType
-        block.type = nextType
+        upgradeBlockByTiers(block, data, 1)
     }
 
     private fun getNextLightningTier(material: Material, data: PlayerData): Material? {
@@ -792,6 +835,7 @@ object MineManager {
 
     private fun fillMineForLayout(layout: MineLayout, valuableWeightMultiplier: Double) {
         val w = world ?: return
+        clearMineBedrockFloor(w, layout.mine)
         fillMineWeighted(w, layout.mine, valuableWeightMultiplier)
     }
 
@@ -813,11 +857,16 @@ object MineManager {
 
     private fun getOwnerValuableMultiplier(ownerId: UUID, eventWeightMultiplier: Double): Double {
         val ownerData = DataStore.get(ownerId)
-        val onlinePlayerMultiplier = (1.0 + (Bukkit.getOnlinePlayers().size.toDouble() / 20.0)).coerceAtMost(2.5)
+        val effectiveEventMultiplier = if (TutorialManager.isRunning(ownerData)) 1.0 else eventWeightMultiplier
         val donorMineWeight = ownerData.mineWeightBonusMultiplier.coerceAtLeast(1.0)
+        val ascensionMineWeight = getAscensionMineWeightMultiplier(ownerData)
         val oreFrequency = getOreFrequencyMultiplier(ownerData.oreFrequencyLevel, ownerData.oreFrequencyMaxLevel, ScrollManager.getBonus(ownerData, UpgradeScrollType.ORE_FREQUENCY))
-        return eventWeightMultiplier * onlinePlayerMultiplier * donorMineWeight * oreFrequency
+        val clanMineWeight = ClanManager.getMineWeightMultiplier(ownerId)
+        return effectiveEventMultiplier * donorMineWeight * ascensionMineWeight * oreFrequency * clanMineWeight
     }
+
+    private fun getAscensionMineWeightMultiplier(data: PlayerData): Double =
+        if (data.ascension <= 0) 1.0 else ASCENSION_MINE_WEIGHT_MULTIPLIER_PER_ASCENSION.pow(data.ascension.toDouble())
 
     private fun findNearestMineCenter(): Pair<Int, Int> {
         if (playerMines.isEmpty()) return INITIAL_MINE_CENTER_X to INITIAL_MINE_CENTER_Z
@@ -833,15 +882,18 @@ object MineManager {
                     (dx * dx) + (dz * dz)
                 }
             for ((centerX, centerZ) in candidates) {
-                val candidate = createMineLayout(centerX, centerZ).mine
-                val overlaps = playerMines.values.any { existing ->
-                    existing.mine.expand(MINE_GAP_BLOCKS).intersects(candidate)
-                }
-                if (!overlaps) return centerX to centerZ
+                if (isMineCenterAvailable(null, centerX, centerZ)) return centerX to centerZ
             }
             radius++
         }
         return INITIAL_MINE_CENTER_X to INITIAL_MINE_CENTER_Z
+    }
+
+    private fun isMineCenterAvailable(ownerId: UUID?, centerX: Int, centerZ: Int): Boolean {
+        val candidate = createMineLayout(centerX, centerZ).mine
+        return playerMines.values.none { existing ->
+            existing.ownerId != ownerId && existing.mine.expand(MINE_GAP_BLOCKS).intersects(candidate)
+        }
     }
 
     private fun ringCandidates(radius: Int): List<Pair<Int, Int>> {
@@ -869,6 +921,12 @@ object MineManager {
 
     private fun teleportToMineTop(player: Player, centerX: Int, centerZ: Int, w: World) {
         player.teleport(Location(w, centerX + 0.5, (MINE_MAX_Y + 1).toDouble(), centerZ + 0.5, player.location.yaw, player.location.pitch))
+    }
+
+    private fun teleportPlayerToMineTopAtCurrentXZ(player: Player, mine: Cuboid, w: World) {
+        val x = player.location.x.coerceIn(mine.minX().toDouble(), mine.maxX() + 0.999999)
+        val z = player.location.z.coerceIn(mine.minZ().toDouble(), mine.maxZ() + 0.999999)
+        player.teleport(Location(w, x, (MINE_MAX_Y + 1).toDouble(), z, player.location.yaw, player.location.pitch))
     }
 
     private fun createMineLayout(centerX: Int, centerZ: Int): MineLayout {
@@ -919,6 +977,18 @@ object MineManager {
                 }
             }
         }.runTaskTimer(TestPlugin.instance, 0L, 1L)
+    }
+
+    private fun clearMineBedrockFloor(world: World, cuboid: Cuboid) {
+        val floorY = cuboid.minY() - 1
+        for (x in cuboid.minX()..cuboid.maxX()) {
+            for (z in cuboid.minZ()..cuboid.maxZ()) {
+                val block = world.getBlockAt(x, floorY, z)
+                if (block.type == Material.BEDROCK) {
+                    block.type = Material.AIR
+                }
+            }
+        }
     }
 
     private fun revealStoredSurfaceBlocks(world: World, cuboid: Cuboid) {

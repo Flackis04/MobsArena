@@ -5,6 +5,7 @@ import net.kyori.adventure.text.format.TextDecoration
 import net.luckperms.api.LuckPermsProvider
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
+import org.bukkit.scoreboard.Criteria
 import org.bukkit.scoreboard.DisplaySlot
 import org.bukkit.scoreboard.Objective
 import org.bukkit.scoreboard.Scoreboard
@@ -13,15 +14,43 @@ import java.util.*
 
 object ScoreboardManager {
     private val boards = mutableMapOf<UUID, Scoreboard>()
+    private val pendingUpdates = mutableSetOf<UUID>()
+    private var flushTaskStarted = false
     private const val NAME_TEAM_PREFIX = "nt_"
+    private const val UPDATE_FLUSH_INTERVAL_TICKS = 5L
+
+    fun init() {
+        if (flushTaskStarted) return
+        flushTaskStarted = true
+        Bukkit.getScheduler().runTaskTimer(
+            TestPlugin.instance,
+            Runnable { flushPendingUpdates() },
+            1L,
+            UPDATE_FLUSH_INTERVAL_TICKS
+        )
+    }
 
     fun updateBoard(player: Player) {
+        pendingUpdates += player.uniqueId
+    }
+
+    private fun flushPendingUpdates() {
+        if (pendingUpdates.isEmpty()) return
+        val playerIds = pendingUpdates.toList()
+        pendingUpdates.clear()
+
+        playerIds.forEach { playerId ->
+            val player = Bukkit.getPlayer(playerId) ?: return@forEach
+            renderBoard(player)
+        }
+    }
+
+    private fun renderBoard(player: Player) {
         val data = DataStore.get(player.uniqueId)
         val blocks = TextUtil.formatNum(data.blocksMined)
         val balance = TextUtil.formatNum(data.balance)
         val playtime = TextUtil.formatPlaytime(data.playtimeSeconds)
         val multiplier = String.format("%.2f", KitManager.getEffectiveSellMultiplier(player))
-
         player.playerListName(TextUtil.toComponent(getTabName(player, data)))
         player.playerListOrder = getTabOrder(player, data)
         player.sendPlayerListHeaderAndFooter(getTabHeader(), getTabFooter())
@@ -30,7 +59,7 @@ object ScoreboardManager {
         var objective = scoreboard.getObjective("mobsarena")
         if (objective == null) {
             val title = TextUtil.toComponent("<#FF5A5A>Mobs Arena").decorate(TextDecoration.BOLD)
-            objective = scoreboard.registerNewObjective("mobsarena", "dummy", title)
+            objective = scoreboard.registerNewObjective("mobsarena", Criteria.DUMMY, title)
             objective.displaySlot = DisplaySlot.SIDEBAR
         } else {
             objective.displayName(
@@ -57,7 +86,7 @@ object ScoreboardManager {
     }
 
     fun refreshTabListForAll() {
-        Bukkit.getOnlinePlayers().forEach { updateBoard(it) }
+        Bukkit.getOnlinePlayers().forEach(::updateBoard)
     }
 
     fun debugPrimaryGroup(player: Player): String = getPrimaryGroup(player)
@@ -183,12 +212,6 @@ object ScoreboardManager {
             prefix = "$luckPermsPrefix$tierColor&l${formatDisplayedRank(data)} &f",
             suffix = luckPermsSuffix
         )
-    }
-
-    private fun formatDisplayedRank(data: PlayerData): String {
-        if (data.rebirth <= 0) return data.rank.toString()
-        val rebirthLetter = ('A'.code + ((data.rebirth - 1) % 26)).toChar()
-        return "$rebirthLetter${data.rank}"
     }
 
     private fun getLuckPermsPrefix(player: Player): String {

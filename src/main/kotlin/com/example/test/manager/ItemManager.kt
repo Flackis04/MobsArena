@@ -20,15 +20,19 @@ object ItemManager {
     lateinit var deathStorage: ItemStack
     lateinit var pickaxe: ItemStack
     lateinit var dynamite: ItemStack
+    lateinit var chargedDynamite: ItemStack
+    lateinit var nuke: ItemStack
+    lateinit var upgradeSnowball: ItemStack
+    lateinit var lightningRodDeployable: ItemStack
 
     const val COIN_NAME = "<#FFFF00>Coins"
     const val COIN_NAME_PLURAL = "<#FFFF00>Coins"
     const val SOUL_FRAGMENT_NAME = "<#131313>&lS<#1F1F1F>&lo<#2B2B2B>&lu<#373737>&ll <#4E4E4E>&lF<#5A5A5A>&lr<#4E4E4E>&la<#424242>&lg<#373737>&lm<#2B2B2B>&le<#1F1F1F>&ln<#131313>&lt"
-    const val TOKEN_NAME_PLURAL = "&6Tokens"
     private val banknoteAmountKey by lazy {
         NamespacedKey(Bukkit.getPluginManager().getPlugin("TestPlugin")!!, "banknote_amount")
     }
     private val scrollRarityKey by lazy { NamespacedKey(TestPlugin.instance, "scroll_rarity") }
+    private val utilityItemTypeKey by lazy { NamespacedKey(TestPlugin.instance, "utility_item_type") }
 
     fun init() {
         coin = ItemStack(Material.SUNFLOWER)
@@ -53,7 +57,7 @@ object ItemManager {
 
         procBooster = ItemStack(Material.HEART_OF_THE_SEA)
         procBooster.editMeta { meta ->
-            meta.displayName(storageStyleName("power up", NamedTextColor.AQUA))
+            meta.displayName(storageStyleName("powerup", NamedTextColor.AQUA))
             meta.lore(
                 listOf(
                     TextUtil.toComponent("&7Offhand: &b+2.5&7 Multi-Break cap")
@@ -65,6 +69,10 @@ object ItemManager {
         storage = makeStorage(false)
         deathStorage = makeStorage(true)
         dynamite = makeDynamite()
+        chargedDynamite = makeChargedDynamite()
+        nuke = makeNuke()
+        upgradeSnowball = makeUpgradeSnowball()
+        lightningRodDeployable = makeLightningRodDeployable()
     }
 
     fun isCoin(item: ItemStack?): Boolean = item?.isSimilar(coin) == true
@@ -96,7 +104,15 @@ object ItemManager {
 
     fun isStorage(item: ItemStack?): Boolean = isBackpack(item) || isDeathpack(item)
 
-    fun isDynamite(item: ItemStack?): Boolean = item?.isSimilar(dynamite) == true
+    fun isDynamite(item: ItemStack?): Boolean = getUtilityItemType(item) == "dynamite"
+
+    fun isChargedDynamite(item: ItemStack?): Boolean = getUtilityItemType(item) == "charged_dynamite"
+
+    fun isNuke(item: ItemStack?): Boolean = getUtilityItemType(item) == "nuke"
+
+    fun isUpgradeSnowball(item: ItemStack?): Boolean = getUtilityItemType(item) == "upgrade_snowball"
+
+    fun isLightningRodDeployable(item: ItemStack?): Boolean = getUtilityItemType(item) == "lightning_rod_deployable"
 
     fun isPickaxe(item: ItemStack?): Boolean {
         if (item?.type != Material.DIAMOND_PICKAXE) return false
@@ -189,7 +205,7 @@ object ItemManager {
         return item
     }
 
-    fun getPickaxeEfficiencyLevel(playerLevel: Int, rebirth: Int): Int = 1 + (playerLevel.coerceAtLeast(0) / 8) + rebirth
+    fun getPickaxeEfficiencyLevel(playerLevel: Int, rebirth: Int): Int = 12 + (playerLevel.coerceAtLeast(0) / 8) + rebirth
 
     fun makeStorage(isDeathpack: Boolean): ItemStack {
         val storage = ItemStack(if (isDeathpack) Material.ENDER_CHEST else Material.CHEST)
@@ -221,9 +237,81 @@ object ItemManager {
                 )
             )
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
+            meta.persistentDataContainer.set(utilityItemTypeKey, PersistentDataType.STRING, "dynamite")
         }
         return item
     }
+
+    fun makeChargedDynamite(): ItemStack {
+        val item = ItemStack(Material.BLUE_CANDLE)
+        item.editMeta { meta ->
+            meta.displayName(storageStyleName("charged dynamite", NamedTextColor.BLUE))
+            meta.lore(
+                listOf(
+                    TextUtil.toComponent("&7Right-click to launch").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7Slightly larger blast than normal dynamite").decoration(TextDecoration.ITALIC, false)
+                )
+            )
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
+            meta.persistentDataContainer.set(utilityItemTypeKey, PersistentDataType.STRING, "charged_dynamite")
+        }
+        return item
+    }
+
+    fun makeNuke(): ItemStack {
+        val item = ItemStack(Material.BLACK_CANDLE)
+        item.editMeta { meta ->
+            meta.displayName(storageStyleName("nuke", NamedTextColor.YELLOW))
+            meta.lore(
+                listOf(
+                    TextUtil.toComponent("&7Right-click to launch").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7Massive blast radius").decoration(TextDecoration.ITALIC, false)
+                )
+            )
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
+            meta.persistentDataContainer.set(utilityItemTypeKey, PersistentDataType.STRING, "nuke")
+        }
+        return item
+    }
+
+    fun makeUpgradeSnowball(): ItemStack {
+        val item = ItemStack(Material.SNOWBALL)
+        item.editMeta { meta ->
+            meta.displayName(storageStyleName("upgrade snowball", NamedTextColor.AQUA))
+            meta.lore(
+                listOf(
+                    TextUtil.toComponent("&7Throw at mine blocks to tier them up").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7Hit block: &b+3 tiers").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7Nearby blocks get fewer tier ups").decoration(TextDecoration.ITALIC, false)
+                )
+            )
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
+            meta.persistentDataContainer.set(utilityItemTypeKey, PersistentDataType.STRING, "upgrade_snowball")
+        }
+        return item
+    }
+
+    fun makeLightningRodDeployable(): ItemStack {
+        val item = ItemStack(Material.LIGHTNING_ROD)
+        item.editMeta { meta ->
+            meta.displayName(storageStyleName("storm rod", NamedTextColor.YELLOW))
+            meta.lore(
+                listOf(
+                    TextUtil.toComponent("&7Right-click in your mine to deploy").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7Stacks up to &e100 &7times on your mine").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7The more you stack, the bigger the rod becomes").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7While active it can trigger &e3x lightning &7at once").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&73x Lightning chance: &e1.0x -> 2.5x &7your Lightning proc chance").decoration(TextDecoration.ITALIC, false)
+                )
+            )
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
+            meta.persistentDataContainer.set(utilityItemTypeKey, PersistentDataType.STRING, "lightning_rod_deployable")
+        }
+        return item
+    }
+
+    private fun getUtilityItemType(item: ItemStack?): String? =
+        item?.itemMeta?.persistentDataContainer?.get(utilityItemTypeKey, PersistentDataType.STRING)
 
     fun makeMace(level: Int): ItemStack {
         val item = ItemStack(Material.MACE)

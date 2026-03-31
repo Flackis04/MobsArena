@@ -19,7 +19,7 @@ class StorageGui(
         private val VALUABLE_SLOTS = listOf(
             9, 10, 11, 12, 13, 14, 15, 16, 17,
             18, 19, 20, 21, 22, 23, 24, 25, 26,
-            27, 28, 29
+            27, 28, 29, 30, 31
         )
     }
 
@@ -58,27 +58,11 @@ class StorageGui(
             }
         }
 
-        gui.setCloseGuiAction {
-            GuiClickDebounce.clear(player)
-            val data = DataStore.get(player.uniqueId)
-            if (!data.hasClosed && data.hasSold) {
-                data.hasClosed = true
-                player.sendTitle(
-                    TextUtil.colorize("&aReady for stronger upgrades?"),
-                    TextUtil.colorize("&fShift-right-click &7your pickaxe to open &a/upgrades&7."),
-                    10,
-                    90,
-                    10
-                )
-            }
-        }
-
         render()
         gui.open(player)
     }
 
     fun render() {
-        gui.inventory.clear()
         renderToolbar()
 
         val storedItems = StorageManager.getContents(player)
@@ -120,8 +104,10 @@ class StorageGui(
                     player.playSound(player.location, "block.note_block.bass", 1f, 1f)
                 }
                 render()
+                gui.update()
             })
         }
+        gui.update()
     }
 
     private fun renderToolbar() {
@@ -156,6 +142,7 @@ class StorageGui(
                     player.playSound(player.location, "block.note_block.bass", 1f, 1f)
                     player.sendMessage(TextUtil.colorize("&cYou cannot sell all while in combat."))
                     render()
+                    gui.update()
                     return@GuiItem
                 }
                 val result = StorageManager.sellAll(player)
@@ -171,6 +158,7 @@ class StorageGui(
                     ScoreboardManager.updateBoard(player)
                 }
                 render()
+                gui.update()
             }
         )
 
@@ -230,7 +218,8 @@ class StorageGui(
 
     private fun createActiveMultipliersItem(): ItemStack {
         val data = DataStore.get(player.uniqueId)
-        val eventMultiplier = if (BossbarManager.hasActiveSellMultiplier()) BossbarManager.multiplier else 1.0
+        val tutorialMode = TutorialManager.isTutorialMode(player)
+        val eventMultiplier = if (!tutorialMode && BossbarManager.hasActiveSellMultiplier()) BossbarManager.multiplier else 1.0
         val deathpackValueMultiplier = if (data.hasEnabledPvp) StorageManager.getDeathpackValueMultiplier(player) else 1.0
         val baseSellMultiplier = KitManager.getEffectiveSellMultiplier(player)
         val finalSellMultiplier = StorageManager.resolveSellMultiplier(player)
@@ -242,13 +231,13 @@ class StorageGui(
         if (data.hasEnabledPvp) {
             lore += "&7Deathpack value multiplier: &c+${TextUtil.formatNum(deathpackValueMultiplier - 1.0)}x"
         }
-        if (BossbarManager.hasActiveSellMultiplier()) {
+        if (!tutorialMode && BossbarManager.hasActiveSellMultiplier()) {
             lore += "&7Event sell multiplier: &d${TextUtil.formatNum(eventMultiplier)}x"
         }
 
         lore += ""
         lore += "&7Sell multiplier: &f${TextUtil.formatNum(baseSellMultiplier)}x"
-        if (BossbarManager.hasActiveSellMultiplier()) {
+        if (!tutorialMode && BossbarManager.hasActiveSellMultiplier()) {
             lore += "&7With active event: &f${TextUtil.formatNum(finalSellMultiplier)}x"
         }
         if (data.hasEnabledPvp) {

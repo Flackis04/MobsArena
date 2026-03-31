@@ -34,6 +34,8 @@ object LevelManager {
     var oreFrequencyMaxLevelWithScroll = oreFrequencyMaxLevel + oreFrequencyMaxAddedLevels
     var scrollFinderMaxLevel = 100
     var scrollFinderMaxLevelWithScroll = scrollFinderMaxLevel
+    var backpackMaxLevel = 250
+    var backpackMaxLevelWithScroll = backpackMaxLevel
 
     var autoMinerFortuneMaxLevel = 75
     var autoMinerFortuneMaxLevelWithScroll = autoMinerFortuneMaxLevel
@@ -57,6 +59,7 @@ object LevelManager {
     val upgradeXpGainCosts = mutableMapOf<Int, Long>()
     val upgradeOreFrequencyCosts = mutableMapOf<Int, Long>()
     val upgradeScrollFinderCosts = mutableMapOf<Int, Long>()
+    val upgradeBackpackCosts = mutableMapOf<Int, Long>()
     val upgradeAutoMinerFortuneCosts = mutableMapOf<Int, Long>()
     val upgradeAutoMinerEfficiencyCosts = mutableMapOf<Int, Long>()
     val upgradeAutoMinerEnergyDrinkCosts = mutableMapOf<Int, Long>()
@@ -76,6 +79,7 @@ object LevelManager {
         upgradeXpGainCosts.clear()
         upgradeOreFrequencyCosts.clear()
         upgradeScrollFinderCosts.clear()
+        upgradeBackpackCosts.clear()
         upgradeAutoMinerFortuneCosts.clear()
         upgradeAutoMinerEfficiencyCosts.clear()
         upgradeAutoMinerEnergyDrinkCosts.clear()
@@ -84,9 +88,9 @@ object LevelManager {
 
 
         generateCostTable(upgradeRankCosts, 500, 520.0, 1.68, rankMaxLevel + MAX_REBIRTH_LEVEL)
-        generateCostTable(upgradeMultiBreakCosts, 70, 70.0, 1.9, multiBreakMaxLevelWithScroll)
-        generateCostTable(upgradeOreBoostCosts, 35, 65.0, 1.8, oreBoostMaxLevelWithScroll)
-        generateCostTable(upgradeFortuneCosts, 180, 1000.0, 2.85, fortuneMaxLevelWithScroll + MAX_REBIRTH_LEVEL)
+        generateCostTable(upgradeMultiBreakCosts, 10, 40.0, 1.8, multiBreakMaxLevelWithScroll)
+        generateCostTable(upgradeOreBoostCosts, 25, 65.0, 1.8, oreBoostMaxLevelWithScroll)
+        generateCostTable(upgradeFortuneCosts, 180, 800.0, 2.5, fortuneMaxLevelWithScroll + MAX_REBIRTH_LEVEL)
         generateCostTable(upgradeExcavatorCosts, 80, 70.0, 2.05, excavatorMaxLevelWithScroll)
         generateCostTable(upgradeLightningCosts, 2_500, 8_500.0, 2.15, lightningMaxLevelWithScroll)
         generateCostTable(upgradeVirtualJackhammerCosts, 10_000, 25_000.0, 2.35, virtualJackhammerMaxLevelWithScroll)
@@ -94,6 +98,7 @@ object LevelManager {
         generateCostTable(upgradeXpGainCosts, 20, 35.0, 1.4, xpGainMaxLevelWithScroll)
         generateCostTable(upgradeOreFrequencyCosts, 2_500, 6_000.0, 2.1, oreFrequencyMaxLevelWithScroll)
         generateCostTable(upgradeScrollFinderCosts, 5_000, 12_500.0, 2.25, scrollFinderMaxLevelWithScroll)
+        generateCostTable(upgradeBackpackCosts, 750, 2_500.0, 1.85, backpackMaxLevelWithScroll)
         generateCostTable(upgradeAutoMinerFortuneCosts, 2_500, 7_500.0, 2.5, autoMinerFortuneMaxLevelWithScroll)
         generateCostTable(upgradeAutoMinerEfficiencyCosts, 3_500, 6_000.0, 2.25, autoMinerEfficiencyMaxLevelWithScroll)
         generateCostTable(upgradeAutoMinerEnergyDrinkCosts, 5_000, 9_000.0, 2.4, autoMinerEnergyDrinkMaxLevelWithScroll)
@@ -127,6 +132,7 @@ object LevelManager {
         if (data.xpGainMaxLevel <= 0) data.xpGainMaxLevel = xpGainMaxLevel
         if (data.oreFrequencyMaxLevel <= 0) data.oreFrequencyMaxLevel = oreFrequencyMaxLevel
         if (data.scrollFinderMaxLevel <= 0) data.scrollFinderMaxLevel = scrollFinderMaxLevel
+        if (data.backpackMaxLevel <= 0) data.backpackMaxLevel = backpackMaxLevel
         if (data.autoMinerFortuneMaxLevel <= 0) data.autoMinerFortuneMaxLevel = autoMinerFortuneMaxLevel
         if (data.autoMinerEfficiencyMaxLevel <= 0) data.autoMinerEfficiencyMaxLevel = autoMinerEfficiencyMaxLevel
         if (data.autoMinerEnergyDrinkMaxLevel <= 0) data.autoMinerEnergyDrinkMaxLevel = autoMinerEnergyDrinkMaxLevel
@@ -143,6 +149,7 @@ object LevelManager {
         data.xpGainMaxLevel = data.xpGainMaxLevel.coerceIn(xpGainMaxLevel, xpGainMaxLevelWithScroll)
         data.oreFrequencyMaxLevel = data.oreFrequencyMaxLevel.coerceIn(oreFrequencyMaxLevel, oreFrequencyMaxLevelWithScroll)
         data.scrollFinderMaxLevel = data.scrollFinderMaxLevel.coerceIn(scrollFinderMaxLevel, scrollFinderMaxLevelWithScroll)
+        data.backpackMaxLevel = data.backpackMaxLevel.coerceIn(backpackMaxLevel, backpackMaxLevelWithScroll)
         data.autoMinerFortuneMaxLevel = data.autoMinerFortuneMaxLevel.coerceIn(autoMinerFortuneMaxLevel, autoMinerFortuneMaxLevelWithScroll)
         data.autoMinerEfficiencyMaxLevel = data.autoMinerEfficiencyMaxLevel.coerceIn(autoMinerEfficiencyMaxLevel, autoMinerEfficiencyMaxLevelWithScroll)
         data.autoMinerEnergyDrinkMaxLevel = data.autoMinerEnergyDrinkMaxLevel.coerceIn(autoMinerEnergyDrinkMaxLevel, autoMinerEnergyDrinkMaxLevelWithScroll)
@@ -157,6 +164,7 @@ object LevelManager {
         if (data.xpGainLevel <= 0) data.xpGainLevel = 1
         if (data.oreFrequencyLevel <= 0) data.oreFrequencyLevel = 1
         if (data.scrollFinderLevel <= 0) data.scrollFinderLevel = 1
+        if (data.backpackLevel <= 0) data.backpackLevel = 1
         if (data.autoMinerFortuneLevel <= 0) data.autoMinerFortuneLevel = 1
         if (data.autoMinerEfficiencyLevel <= 0) data.autoMinerEfficiencyLevel = 1
         if (data.autoMinerEnergyDrinkLevel <= 0) data.autoMinerEnergyDrinkLevel = 1
@@ -175,6 +183,7 @@ object LevelManager {
         data.xpGainLevel = data.xpGainLevel.coerceAtMost(data.xpGainMaxLevel)
         data.oreFrequencyLevel = data.oreFrequencyLevel.coerceAtMost(data.oreFrequencyMaxLevel)
         data.scrollFinderLevel = data.scrollFinderLevel.coerceAtMost(data.scrollFinderMaxLevel)
+        data.backpackLevel = data.backpackLevel.coerceAtMost(data.backpackMaxLevel)
         data.autoMinerFortuneLevel = data.autoMinerFortuneLevel.coerceAtMost(data.autoMinerFortuneMaxLevel)
         data.autoMinerEfficiencyLevel = data.autoMinerEfficiencyLevel.coerceAtMost(data.autoMinerEfficiencyMaxLevel)
         data.autoMinerEnergyDrinkLevel = data.autoMinerEnergyDrinkLevel.coerceAtMost(data.autoMinerEnergyDrinkMaxLevel)
