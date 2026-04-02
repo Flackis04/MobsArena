@@ -15,11 +15,10 @@ class ChatListener : Listener {
         val player = event.player
         event.isCancelled = true
         val data = DataStore.get(player.uniqueId)
-        val tierColor = TierManager.getTier(data.rank)?.color ?: "&f"
         val message = LegacyComponentSerializer.legacySection().serialize(event.message())
         WelcomeRewardManager.tryRewardGreeter(player, message)
         val prefix = getLuckPermsPrefix(player)
-        val formatted = "$prefix${tierColor}&l${formatDisplayedRank(data)} &f${player.name}&8 >> &r&f${message}"
+        val formatted = "$prefix${formatStyledRank(data)} &f${player.name} &8» &r&f${message}"
         Bukkit.getScheduler().runTask(TestPlugin.instance, Runnable {
             player.world.players.forEach { it.sendMessage(TextUtil.colorize(formatted)) }
         })

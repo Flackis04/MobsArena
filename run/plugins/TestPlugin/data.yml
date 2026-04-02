@@ -1,0 +1,500 @@
+62f1143c-b0b9-4826-9261-9e64e5521234:
+  kitLevel: 1
+  maceLevel: 1
+  killBonusLevel: 1
+  bankLevel: 1
+  multiBreakLevel: 4
+  fortuneLevel: 4
+  oreBoostLevel: 32
+  healthLevel: 1
+  foodLevel: 1
+  swordLevel: 1
+  excavatorLevel: 4
+  balance: 9999997470158
+  kills: 0
+  deaths: 0
+  blocksMined: 49314
+  playtimeSeconds: 76302
+  hasClaimedBattlepass: []
+  hasUsedNoobProtection: false
+  excavatorEfficiencyLevel: 4
+  multiplier: 1.75
+  tokens: 4
+  flight: false
+  hasReceivedJoinLoadout: true
+  storageContents:
+  - type: RAW_GOLD
+    amount: 157
+  - type: DIAMOND
+    amount: 73
+  - type: EMERALD
+    amount: 53
+  - type: AMETHYST_BLOCK
+    amount: 35
+  - type: GOLD_BLOCK
+    amount: 15
+  - type: REDSTONE_BLOCK
+    amount: 9
+  - type: LAPIS_BLOCK
+    amount: 10
+  - type: ANCIENT_DEBRIS
+    amount: 1
+  - type: NETHERITE_BLOCK
+    amount: 1
+  xpGainLevel: 250
+  prestige: false
+  hasTouched: false
+  hasBroken: true
+  hasClosed: false
+  debugNewPlayer: false
+  experienceBuffer: 0.38023912007553573
+  animationsEnabled: true
+  animationStartDelayTicks: 0
+  animationDurationTicks: 8
+  animationExtraBlockDelayTicks: 0
+  animationLinearMode: true
+  hasClaimedPlaytimeRewards:
+  - 11
+  rank: 1
+  level: 35
+  rebirth: 3
+  hasSold: true
+  valuableCollected:
+    AMETHYST_BLOCK: 42
+    RAW_GOLD: 186
+    EMERALD: 70
+    DIAMOND_BLOCK: 3
+    DIAMOND: 104
+    REDSTONE_BLOCK: 11
+    GOLD_BLOCK: 18
+    EMERALD_BLOCK: 1
+    LAPIS_BLOCK: 10
+    ANCIENT_DEBRIS: 1
+    NETHERITE_BLOCK: 1
+  flightUnlocked: false
+  hasEnabledPvp: false
+  deathStorageContents: []
+  autoMinerFortuneLevel: 1
+  autoMinerEfficiencyLevel: 1
+  autoMinerEnergyDrinkLevel: 1
+  hasLinkedDiscord: false
+  discordMultiplierBonus: 0.0
+  autoMinerStorageContents:
+  - type: RAW_GOLD
+    amount: 150
+  - type: DIAMOND
+    amount: 96
+  - type: EMERALD
+    amount: 64
+  - type: AMETHYST_BLOCK
+    amount: 43
+  - type: GOLD_BLOCK
+    amount: 15
+  - type: REDSTONE_BLOCK
+    amount: 11
+  - type: LAPIS_BLOCK
+    amount: 4
+  - type: OBSIDIAN
+    amount: 1
+  lightningLevel: 4
+  virtualJackhammerLevel: 4
+  autoMinerBackpackLevel: 1
+  autoMinerLuckLevel: 1
+  hasDonorRank: false
+  donorRankMultiplier: 0.0
+  mineWeightBonusMultiplier: 1.0
+  extraExperienceMultiplier: 1.0
+  noobProtection: false
+  masteryActivations:
+    oreBoost: 8
+    excavator: 3
+  masteryLevels:
+    valuable:AMETHYST_BLOCK: 0
+    valuable:RAW_GOLD: 0
+    oreBoost: 0
+    excavator: 0
+    lightning: 0
+    virtualJackhammer: 0
+    valuable:DIAMOND: 0
+    valuable:EMERALD: 0
+    valuable:GOLD_BLOCK: 0
+    valuable:REDSTONE_BLOCK: 0
+    valuable:LAPIS_BLOCK: 0
+    valuable:DIAMOND_BLOCK: 0
+    valuable:EMERALD_BLOCK: 0
+    valuable:ANCIENT_DEBRIS: 0
+    valuable:NETHERITE_BLOCK: 0
+    valuable:OBSIDIAN: 0
+    valuable:CRYING_OBSIDIAN: 0
+    valuable:MAGMA_BLOCK: 0
+    valuable:RESPAWN_ANCHOR: 0
+    valuable:SCULK: 0
+    valuable:SCULK_CATALYST: 0
+    valuable:BEACON: 0
+    valuable:OCHRE_FROGLIGHT: 0
+    valuable:VERDANT_FROGLIGHT: 0
+    valuable:PEARLESCENT_FROGLIGHT: 0
+    valuable:SPAWNER: 0
+    valuable:TRIAL_SPAWNER: 0
+  oreFrequencyLevel: 4
+  hasSeenMineHelp: false
+  mineCenterX: 0
+  mineCenterZ: -12
+  multiBreakScrollBonus: 0.0
+  upgradeScrollBonuses:
+    fortune: 5.0
+  excavatorEfficiencyMaxLevel: 25
+  multiBreakMaxLevel: 75
+  fortuneMaxLevel: 50
+  oreBoostMaxLevel: 75
+  excavatorMaxLevel: 100
+  lightningMaxLevel: 75
+  virtualJackhammerMaxLevel: 250
+  xpGainMaxLevel: 250
+  oreFrequencyMaxLevel: 50
+  autoMinerFortuneMaxLevel: 75
+  autoMinerEfficiencyMaxLevel: 100
+  autoMinerEnergyDrinkMaxLevel: 75
+  autoMinerBackpackMaxLevel: 500
+  autoMinerLuckMaxLevel: 100
+  scrollFinderLevel: 4
+  scrollFinderMaxLevel: 100
+  valuableBlocksBroken: 272
+  hasSeenBackpackSellHint: true
+  hasSeenUpgradeHint: true
+  playtimeSecondsAtLastRebirth: 0
+  shieldActive: false
+  shieldSecondsRemaining: 857
+  shieldCooldownSecondsRemaining: 257
+  shieldOnlineSecondsRemaining: 0
+  shieldCooldownOnlineSecondsRemaining: 0
+  mineShares: {}
+  mineRentPublic: false
+  mineRentTaxPercent: 0
+  trustedMinePlayers: []
+  lightningRodPlaced: true
+  tutorialActive: false
+  tutorialPendingUpgradeClose: false
+  lastWarnedTaxedMineOwner: ''
+  lightningRodCount: 1
+  newPlayer: false
+  backpackLevel: 1
+  backpackMaxLevel: 250
+  sellMultiplierLevel: 8
+  sellMultiplierMaxLevel: 75
+  tokenFinderLevel: 4
+  tokenFinderMaxLevel: 75
+  jackpotLevel: 4
+  jackpotMaxLevel: 60
+  comboLevel: 23
+  comboMaxLevel: 75
+  procPowerLevel: 4
+  procPowerMaxLevel: 50
+  paymentUnlockPlaytimeSeconds: 0
+  ascension: 0
+3a368878-40f7-457c-9a32-0e4aef01a3cd:
+  kitLevel: 1
+  maceLevel: 1
+  killBonusLevel: 1
+  bankLevel: 1
+  multiBreakLevel: 1
+  fortuneLevel: 1
+  oreBoostLevel: 1
+  healthLevel: 1
+  foodLevel: 1
+  swordLevel: 1
+  excavatorLevel: 1
+  excavatorEfficiencyLevel: 1
+  balance: 0
+  kills: 0
+  deaths: 0
+  blocksMined: 0
+  playtimeSeconds: 0
+  hasClaimedBattlepass: []
+  hasUsedNoobProtection: false
+  multiplier: 1.0
+  tokens: 0
+  flight: false
+  hasReceivedJoinLoadout: false
+  storageContents: []
+  xpGainLevel: 1
+  prestige: false
+  hasTouched: false
+  hasBroken: false
+  hasClosed: false
+  debugNewPlayer: false
+  experienceBuffer: 0.0
+  animationsEnabled: true
+  animationStartDelayTicks: 0
+  animationDurationTicks: 8
+  animationExtraBlockDelayTicks: 0
+  animationLinearMode: true
+  hasClaimedPlaytimeRewards: []
+  rank: 1
+  level: 0
+  rebirth: 0
+  hasSold: false
+  valuableCollected: {}
+  flightUnlocked: false
+  hasEnabledPvp: false
+  deathStorageContents: []
+  autoMinerFortuneLevel: 1
+  autoMinerEfficiencyLevel: 1
+  autoMinerEnergyDrinkLevel: 1
+  hasLinkedDiscord: false
+  discordMultiplierBonus: 0.0
+  autoMinerStorageContents: []
+  lightningLevel: 1
+  virtualJackhammerLevel: 1
+  autoMinerBackpackLevel: 1
+  autoMinerLuckLevel: 1
+  hasDonorRank: false
+  donorRankMultiplier: 0.0
+  mineWeightBonusMultiplier: 1.0
+  extraExperienceMultiplier: 1.0
+  noobProtection: false
+  masteryActivations: {}
+  masteryLevels: {}
+  oreFrequencyLevel: 1
+  hasSeenMineHelp: false
+  mineCenterX: -2147483648
+  mineCenterZ: -2147483648
+  multiBreakScrollBonus: 0.0
+  upgradeScrollBonuses: {}
+  excavatorEfficiencyMaxLevel: 25
+  multiBreakMaxLevel: 75
+  fortuneMaxLevel: 50
+  oreBoostMaxLevel: 150
+  excavatorMaxLevel: 100
+  lightningMaxLevel: 75
+  virtualJackhammerMaxLevel: 250
+  xpGainMaxLevel: 200
+  oreFrequencyMaxLevel: 50
+  autoMinerFortuneMaxLevel: 75
+  autoMinerEfficiencyMaxLevel: 100
+  autoMinerEnergyDrinkMaxLevel: 75
+  autoMinerBackpackMaxLevel: 500
+  autoMinerLuckMaxLevel: 100
+  scrollFinderLevel: 1
+  scrollFinderMaxLevel: 100
+  valuableBlocksBroken: 0
+  hasSeenBackpackSellHint: false
+  hasSeenUpgradeHint: false
+  playtimeSecondsAtLastRebirth: 0
+  shieldActive: false
+  shieldSecondsRemaining: 0
+  shieldCooldownSecondsRemaining: 0
+  shieldOnlineSecondsRemaining: 0
+  shieldCooldownOnlineSecondsRemaining: 0
+  mineShares: {}
+  mineRentPublic: false
+  mineRentTaxPercent: 0
+  trustedMinePlayers: []
+  lightningRodPlaced: false
+  tutorialActive: false
+  tutorialPendingUpgradeClose: false
+  lastWarnedTaxedMineOwner: ''
+  lightningRodCount: 0
+  backpackLevel: 1
+  backpackMaxLevel: 250
+  sellMultiplierLevel: 1
+  sellMultiplierMaxLevel: 75
+  tokenFinderLevel: 1
+  tokenFinderMaxLevel: 75
+  jackpotLevel: 1
+  jackpotMaxLevel: 60
+  comboLevel: 1
+  comboMaxLevel: 75
+  procPowerLevel: 1
+  procPowerMaxLevel: 50
+  paymentUnlockPlaytimeSeconds: 0
+  ascension: 0
+3a6a3981-bd3a-4555-acbf-aa39e7237393:
+  multiplier: 5.75
+  kitLevel: 1
+  maceLevel: 1
+  killBonusLevel: 1
+  bankLevel: 1
+  multiBreakLevel: 30
+  fortuneLevel: 30
+  oreBoostLevel: 30
+  healthLevel: 1
+  foodLevel: 1
+  swordLevel: 1
+  excavatorLevel: 30
+  excavatorEfficiencyLevel: 20
+  xpGainLevel: 20
+  balance: 0
+  tokens: 0
+  kills: 0
+  deaths: 0
+  blocksMined: 457
+  playtimeSeconds: 7075
+  flight: false
+  prestige: false
+  hasReceivedJoinLoadout: true
+  hasTouched: false
+  hasBroken: true
+  hasClosed: false
+  debugNewPlayer: false
+  experienceBuffer: 0.03147889799755177
+  storageContents:
+  - type: RAW_GOLD
+    amount: 297
+  - type: DIAMOND
+    amount: 116
+  - type: EMERALD
+    amount: 87
+  - type: AMETHYST_BLOCK
+    amount: 45
+  - type: GOLD_BLOCK
+    amount: 9
+  - type: REDSTONE_BLOCK
+    amount: 9
+  hasClaimedBattlepass: []
+  hasUsedNoobProtection: true
+  animationsEnabled: true
+  animationStartDelayTicks: 0
+  animationDurationTicks: 8
+  animationExtraBlockDelayTicks: 0
+  animationLinearMode: true
+  hasClaimedPlaytimeRewards: []
+  rank: 1
+  level: 16
+  rebirth: 29
+  hasSold: false
+  valuableCollected:
+    GOLD_BLOCK: 9
+    RAW_GOLD: 297
+    EMERALD: 87
+    DIAMOND: 116
+    AMETHYST_BLOCK: 45
+    REDSTONE_BLOCK: 9
+  flightUnlocked: false
+  hasEnabledPvp: false
+  deathStorageContents: []
+  autoMinerFortuneLevel: 1
+  autoMinerEfficiencyLevel: 1
+  autoMinerEnergyDrinkLevel: 1
+  hasLinkedDiscord: false
+  discordMultiplierBonus: 0.0
+  autoMinerStorageContents:
+  - type: RAW_GOLD
+    amount: 1994
+  - type: DIAMOND
+    amount: 1504
+  - type: EMERALD
+    amount: 809
+  - type: AMETHYST_BLOCK
+    amount: 528
+  - type: GOLD_BLOCK
+    amount: 207
+  - type: REDSTONE_BLOCK
+    amount: 126
+  - type: LAPIS_BLOCK
+    amount: 63
+  - type: DIAMOND_BLOCK
+    amount: 32
+  - type: EMERALD_BLOCK
+    amount: 16
+  - type: ANCIENT_DEBRIS
+    amount: 12
+  - type: NETHERITE_BLOCK
+    amount: 4
+  - type: OBSIDIAN
+    amount: 1
+  - type: SCULK
+    amount: 2
+  lightningLevel: 30
+  virtualJackhammerLevel: 30
+  autoMinerBackpackLevel: 1
+  autoMinerLuckLevel: 1
+  hasDonorRank: false
+  donorRankMultiplier: 0.0
+  mineWeightBonusMultiplier: 1.0
+  extraExperienceMultiplier: 1.0
+  noobProtection: true
+  masteryActivations:
+    lightning: 1
+    excavator: 1
+  masteryLevels:
+    oreBoost: 0
+    excavator: 0
+    lightning: 0
+    virtualJackhammer: 0
+    valuable:RAW_GOLD: 0
+    valuable:DIAMOND: 0
+    valuable:EMERALD: 0
+    valuable:AMETHYST_BLOCK: 0
+    valuable:GOLD_BLOCK: 0
+    valuable:REDSTONE_BLOCK: 0
+    valuable:LAPIS_BLOCK: 0
+    valuable:DIAMOND_BLOCK: 0
+    valuable:EMERALD_BLOCK: 0
+    valuable:ANCIENT_DEBRIS: 0
+    valuable:NETHERITE_BLOCK: 0
+    valuable:OBSIDIAN: 0
+    valuable:CRYING_OBSIDIAN: 0
+    valuable:MAGMA_BLOCK: 0
+    valuable:RESPAWN_ANCHOR: 0
+    valuable:SCULK: 0
+    valuable:SCULK_CATALYST: 0
+    valuable:BEACON: 0
+    valuable:OCHRE_FROGLIGHT: 0
+    valuable:VERDANT_FROGLIGHT: 0
+    valuable:PEARLESCENT_FROGLIGHT: 0
+  oreFrequencyLevel: 20
+  hasSeenMineHelp: false
+  mineCenterX: 0
+  mineCenterZ: -12
+  multiBreakScrollBonus: 0.0
+  upgradeScrollBonuses: {}
+  excavatorEfficiencyMaxLevel: 25
+  multiBreakMaxLevel: 75
+  fortuneMaxLevel: 50
+  oreBoostMaxLevel: 75
+  excavatorMaxLevel: 100
+  lightningMaxLevel: 75
+  virtualJackhammerMaxLevel: 250
+  xpGainMaxLevel: 200
+  oreFrequencyMaxLevel: 50
+  autoMinerFortuneMaxLevel: 75
+  autoMinerEfficiencyMaxLevel: 100
+  autoMinerEnergyDrinkMaxLevel: 75
+  autoMinerBackpackMaxLevel: 500
+  autoMinerLuckMaxLevel: 100
+  newPlayer: false
+  scrollFinderLevel: 20
+  scrollFinderMaxLevel: 100
+  valuableBlocksBroken: 64
+  hasSeenBackpackSellHint: true
+  hasSeenUpgradeHint: true
+  playtimeSecondsAtLastRebirth: 0
+  shieldActive: false
+  shieldSecondsRemaining: 0
+  shieldCooldownSecondsRemaining: 0
+  shieldOnlineSecondsRemaining: 0
+  shieldCooldownOnlineSecondsRemaining: 0
+  mineShares: {}
+  mineRentPublic: false
+  mineRentTaxPercent: 0
+  trustedMinePlayers: []
+  lightningRodPlaced: false
+  tutorialActive: false
+  tutorialPendingUpgradeClose: false
+  lastWarnedTaxedMineOwner: ''
+  lightningRodCount: 0
+  backpackLevel: 1
+  backpackMaxLevel: 250
+  sellMultiplierLevel: 1
+  sellMultiplierMaxLevel: 75
+  tokenFinderLevel: 1
+  tokenFinderMaxLevel: 75
+  jackpotLevel: 1
+  jackpotMaxLevel: 60
+  comboLevel: 1
+  comboMaxLevel: 75
+  procPowerLevel: 1
+  procPowerMaxLevel: 50
+  paymentUnlockPlaytimeSeconds: 0
+  ascension: 0

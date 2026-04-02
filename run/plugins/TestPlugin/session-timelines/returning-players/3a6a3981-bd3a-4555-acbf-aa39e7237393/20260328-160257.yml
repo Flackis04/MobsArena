@@ -1,0 +1,15 @@
+playerId: 3a6a3981-bd3a-4555-acbf-aa39e7237393
+playerName: PerfectNeglect
+startedAt: '2026-03-28 16:02:57'
+endedAt: '2026-03-28 16:03:07'
+logoffSpot:
+  world: mine
+  x: -2.1110342490880054
+  y: 65.0
+  z: -12.75902975193935
+  yaw: 161.01006
+  pitch: 20.044008
+timeline:
+- 2026-03-28 16:02:57 | Joined at mine @ 0.5, 65.0, -11.5
+- '2026-03-28 16:03:04 | Command: /setdata Flackis04 rebirth 0'
+- 2026-03-28 16:03:07 | Logged off at mine @ -2.1, 65.0, -12.8

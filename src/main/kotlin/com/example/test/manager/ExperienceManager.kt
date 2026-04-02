@@ -66,7 +66,8 @@ object ExperienceManager {
         val totalExperience = baseExperience *
             getExperienceMultiplier(data.xpGainLevel, data.xpGainMaxLevel, ScrollManager.getBonus(data, UpgradeScrollType.XP_GAIN)) *
             data.extraExperienceMultiplier *
-            LEVELING_PACE_MULTIPLIER
+            LEVELING_PACE_MULTIPLIER /
+            getAscensionXpCostMultiplier(data)
         val wholeExperience = floor(totalExperience).toInt()
         val fractionalExperience = totalExperience - wholeExperience
 

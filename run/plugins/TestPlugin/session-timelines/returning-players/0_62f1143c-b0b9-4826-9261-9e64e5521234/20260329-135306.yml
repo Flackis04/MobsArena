@@ -1,0 +1,22 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-29 13:53:06'
+endedAt: '2026-03-29 13:55:15'
+logoffSpot:
+  world: mine
+  x: -9.810197269369539
+  y: 65.0
+  z: -18.206764588253534
+  yaw: 62.39276
+  pitch: 39.868782
+timeline:
+- 2026-03-29 13:53:06 | Joined at mine @ 0.5, 100.0, -40.5
+- 2026-03-29 13:53:10 | Teleported to mine @ 0.5, 66.5, -11.5
+- '2026-03-29 13:53:11 | Broke following blocks at mine: 6x Deepslate Gold Ore, 3x
+  Deepslate Diamond Ore, 2x Deepslate, 1x <#FF3030>REDSTONE BLOCK'
+- '2026-03-29 13:53:18 | Sold all backpack contents: 10 items for 71 <#FFFF00>Coins'
+- 2026-03-29 13:53:21 | Upgraded Multi-Break - Lvl 1 from level 1 to 2 for 9 <#FFFF00>Coins
+- 2026-03-29 13:53:21 | Upgraded Multi-Break - Lvl 2 from level 2 to 3 for 45 <#FFFF00>Coins
+- '2026-03-29 13:53:23 | Broke following blocks at mine: 18x Deepslate, 2x Deepslate
+  Gold Ore, 1x <#A06CD5>AMETHYST BLOCK, 1x Deepslate Diamond Ore'
+- 2026-03-29 13:55:15 | Logged off at mine @ -9.8, 65.0, -18.2

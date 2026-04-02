@@ -16,13 +16,32 @@ object UpgradeFormulas {
     private const val LIGHTNING_GROWTH = 6.0
     private const val JACKHAMMER_MAX_CHANCE = 0.025
     private const val JACKHAMMER_GROWTH = 8.0
-    private const val XP_GAIN_MAX_MULTIPLIER = 25.0
+    private const val XP_GAIN_MAX_MULTIPLIER = 40.0
     private const val EXCAVATOR_EFFICIENCY_MAX = 7.5
     private const val EXCAVATOR_EFFICIENCY_GROWTH = 4.0
     private const val ORE_FREQUENCY_MAX_MULTIPLIER = 18.0
     private const val ORE_FREQUENCY_GROWTH = 2.0
     private const val SCROLL_FINDER_MAX_CHANCE = 0.00025
     private const val SCROLL_FINDER_GROWTH = 8.0
+    private const val SELL_MULTIPLIER_MAX = 2.75
+    private const val SELL_MULTIPLIER_GROWTH = 2.25
+    private const val TOKEN_FINDER_MAX_CHANCE = 0.025
+    private const val TOKEN_FINDER_GROWTH = 2.0
+    private const val TOKEN_FINDER_MAX_AMOUNT = 6
+    private const val JACKPOT_MAX_CHANCE = 0.018
+    private const val JACKPOT_CHANCE_GROWTH = 2.4
+    private const val JACKPOT_MAX_MULTIPLIER = 4.5
+    private const val JACKPOT_MULTIPLIER_GROWTH = 2.1
+    private const val COMBO_MAX_STREAK = 300
+    private const val COMBO_STREAK_GROWTH = 2.0
+    private const val COMBO_MAX_BONUS = 0.8
+    private const val COMBO_BONUS_GROWTH = 2.3
+    private const val PROC_POWER_ORE_BOOST_MAX = 3.5
+    private const val PROC_POWER_ORE_BOOST_GROWTH = 2.0
+    private const val PROC_POWER_EXCAVATOR_MAX = 1.65
+    private const val PROC_POWER_EXCAVATOR_GROWTH = 2.0
+    private const val PROC_POWER_JACKHAMMER_MAX = 2.1
+    private const val PROC_POWER_JACKHAMMER_GROWTH = 2.0
     private const val AUTO_MINER_LUCK_MAX_MULTIPLIER = 1.5
     private const val AUTO_MINER_OFFLINE_MAX_RATE = 0.25
     private const val AUTO_MINER_EFFICIENCY_GROWTH = 5.0
@@ -136,6 +155,50 @@ object UpgradeFormulas {
 
     fun getScrollFinderChance(level: Int, maxLevel: Int = LevelManager.scrollFinderMaxLevel): Double =
         UpgradeScaling.scale(level, maxLevel, 0.0, SCROLL_FINDER_MAX_CHANCE, SCROLL_FINDER_GROWTH)
+
+    fun getSellMultiplier(level: Int, maxLevel: Int = LevelManager.sellMultiplierMaxLevel): Double =
+        UpgradeScaling.scale(level, maxLevel, 1.0, SELL_MULTIPLIER_MAX, SELL_MULTIPLIER_GROWTH)
+
+    fun getTokenFinderChance(level: Int, maxLevel: Int = LevelManager.tokenFinderMaxLevel): Double =
+        UpgradeScaling.scale(level, maxLevel, 0.0, TOKEN_FINDER_MAX_CHANCE, TOKEN_FINDER_GROWTH)
+
+    fun getTokenFinderAmount(level: Int, maxLevel: Int = LevelManager.tokenFinderMaxLevel): Int =
+        UpgradeScaling.scaleInt(level, maxLevel, 1, TOKEN_FINDER_MAX_AMOUNT, 1.85)
+
+    fun getJackpotChance(level: Int, maxLevel: Int = LevelManager.jackpotMaxLevel): Double =
+        UpgradeScaling.scale(level, maxLevel, 0.0, JACKPOT_MAX_CHANCE, JACKPOT_CHANCE_GROWTH)
+
+    fun getJackpotMultiplier(level: Int, maxLevel: Int = LevelManager.jackpotMaxLevel): Double =
+        UpgradeScaling.scale(level, maxLevel, 1.5, JACKPOT_MAX_MULTIPLIER, JACKPOT_MULTIPLIER_GROWTH)
+
+    fun getComboMaxStreak(level: Int, maxLevel: Int = LevelManager.comboMaxLevel): Int =
+        UpgradeScaling.scaleInt(level, maxLevel, 5, COMBO_MAX_STREAK, COMBO_STREAK_GROWTH)
+
+    fun getComboBonusMultiplier(level: Int, streak: Int, maxLevel: Int = LevelManager.comboMaxLevel): Double {
+        val maxStreak = getComboMaxStreak(level, maxLevel).coerceAtLeast(1)
+        val effectiveStreak = streak.coerceIn(0, maxStreak)
+        val maxBonus = UpgradeScaling.scale(level, maxLevel, 0.0, COMBO_MAX_BONUS, COMBO_BONUS_GROWTH)
+        return 1.0 + UpgradeScaling.scale(effectiveStreak + 1, maxStreak + 1, 0.0, maxBonus, 1.8)
+    }
+
+    fun getProcPowerOreBoostMultiplier(level: Int, maxLevel: Int = LevelManager.procPowerMaxLevel): Double =
+        UpgradeScaling.scale(level, maxLevel, 2.0, PROC_POWER_ORE_BOOST_MAX, PROC_POWER_ORE_BOOST_GROWTH)
+
+    fun getProcPowerExcavatorMultiplier(level: Int, maxLevel: Int = LevelManager.procPowerMaxLevel): Double =
+        UpgradeScaling.scale(level, maxLevel, 1.0, PROC_POWER_EXCAVATOR_MAX, PROC_POWER_EXCAVATOR_GROWTH)
+
+    fun getProcPowerJackhammerMultiplier(level: Int, maxLevel: Int = LevelManager.procPowerMaxLevel): Double =
+        UpgradeScaling.scale(level, maxLevel, 1.0, PROC_POWER_JACKHAMMER_MAX, PROC_POWER_JACKHAMMER_GROWTH)
+
+    fun getProcPowerLightningRadiusBonus(level: Int, maxLevel: Int = LevelManager.procPowerMaxLevel): Int =
+        if (level >= maxLevel.coerceAtLeast(1) / 2) 1 else 0
+
+    fun getProcPowerLightningTierBonus(level: Int, maxLevel: Int = LevelManager.procPowerMaxLevel): Int =
+        when {
+            level >= maxLevel.coerceAtLeast(1) -> 2
+            level >= maxLevel.coerceAtLeast(1) / 2 -> 1
+            else -> 0
+        }
 
     fun getAutoMinerLuckMultiplier(level: Int): Double =
         UpgradeScaling.scale(level, LevelManager.autoMinerLuckMaxLevelWithScroll, 1.0, AUTO_MINER_LUCK_MAX_MULTIPLIER, AUTO_MINER_LUCK_GROWTH)

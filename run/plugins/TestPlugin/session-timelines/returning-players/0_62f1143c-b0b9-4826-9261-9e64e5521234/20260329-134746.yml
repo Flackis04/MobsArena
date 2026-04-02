@@ -1,0 +1,16 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-29 13:47:46'
+endedAt: '2026-03-29 13:47:49'
+logoffSpot:
+  world: mine
+  x: 2.585424837326749
+  y: 65.0
+  z: -57.70198427567793
+  yaw: -136.82117
+  pitch: 33.406155
+timeline:
+- 2026-03-29 13:47:46 | Joined at mine @ 0.5, 65.0, -55.5
+- '2026-03-29 13:47:48 | Broke following blocks at mine: 1x <#A06CD5>AMETHYST BLOCK'
+- '2026-03-29 13:47:49 | Command: /newplayer'
+- 2026-03-29 13:47:49 | Logged off at mine @ 2.6, 65.0, -57.7

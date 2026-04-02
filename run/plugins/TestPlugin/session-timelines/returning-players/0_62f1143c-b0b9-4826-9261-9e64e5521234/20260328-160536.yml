@@ -1,0 +1,39 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-28 16:05:36'
+endedAt: '2026-03-28 16:07:13'
+logoffSpot:
+  world: mine
+  x: -0.2366415177324627
+  y: 37.0
+  z: -15.273912316303692
+  yaw: -65.50824
+  pitch: 34.567562
+timeline:
+- 2026-03-28 16:05:36 | Joined at mine @ 0.5, 36.0, -11.5
+- '2026-03-28 16:05:41 | Broke following blocks at mine: 57x Deepslate, 3x Deepslate
+  Gold Ore, 2x Deepslate Diamond Ore, 2x Deepslate Emerald Ore'
+- 2026-03-28 16:05:43 | Teleported to mine @ 1.4, 36.0, -9.7
+- '2026-03-28 16:05:44 | Broke following blocks at mine: 70x Deepslate, 5x Deepslate
+  Gold Ore, 2x Deepslate Emerald Ore, 1x <#A06CD5>AMETHYST BLOCK'
+- 2026-03-28 16:05:46 | Teleported to mine @ 0.2, 36.0, -10.9
+- '2026-03-28 16:05:46 | Broke following blocks at mine: 74x Deepslate, 2x <#A06CD5>AMETHYST
+  BLOCK, 2x Deepslate Diamond Ore, 1x <#4A6A5A>SCULK, 1x <#FFD700>GOLD BLOCK'
+- 2026-03-28 16:05:48 | Teleported to mine @ 0.4, 36.0, -11.6
+- '2026-03-28 16:05:48 | Broke following blocks at mine: 9x Deepslate'
+- '2026-03-28 16:05:50 | Command: /reset Flackis04'
+- '2026-03-28 16:05:51 | Broke following blocks at mine: 50x Deepslate, 2x Deepslate
+  Gold Ore'
+- 2026-03-28 16:05:55 | Teleported to mine @ -1.5, 36.0, -12.2
+- '2026-03-28 16:05:55 | Broke following blocks at mine: 101x Deepslate, 1x <#FFD700>GOLD
+  BLOCK, 1x Deepslate Emerald Ore, 1x Deepslate Gold Ore'
+- '2026-03-28 16:06:31 | Command: /shield'
+- 2026-03-28 16:06:31 | Activated mine shield
+- '2026-03-28 16:06:36 | Broke following blocks at mine: 69x Deepslate, 2x Deepslate
+  Diamond Ore'
+- '2026-03-28 16:06:58 | Command: /rebirth Flackis04 1'
+- '2026-03-28 16:07:02 | Command: /setdata Flackis04 rebirth 1'
+- '2026-03-28 16:07:05 | Command: /minereset'
+- 2026-03-28 16:07:05 | Teleported to mine @ -1.3, 37.0, -11.6
+- '2026-03-28 16:07:11 | Broke following blocks at mine: 16x Deepslate'
+- 2026-03-28 16:07:13 | Logged off at mine @ -0.2, 37.0, -15.3

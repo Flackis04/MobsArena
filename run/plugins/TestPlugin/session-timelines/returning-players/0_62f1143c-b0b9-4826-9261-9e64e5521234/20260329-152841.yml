@@ -1,0 +1,17 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-29 15:28:41'
+endedAt: '2026-03-29 15:29:33'
+logoffSpot:
+  world: mine
+  x: 4.485612212217222
+  y: 65.0
+  z: -10.96938970873479
+  yaw: -53.521477
+  pitch: 23.45679
+timeline:
+- 2026-03-29 15:28:41 | Joined at mine @ 0.5, 100.0, -40.5
+- '2026-03-29 15:28:42 | Command: /bm'
+- 2026-03-29 15:28:44 | Teleported to mine @ 0.5, 66.5, -11.5
+- '2026-03-29 15:28:49 | Broke following blocks at mine: 2x Deepslate'
+- 2026-03-29 15:29:33 | Logged off at mine @ 4.5, 65.0, -11.0

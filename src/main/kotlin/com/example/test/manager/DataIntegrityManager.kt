@@ -134,6 +134,36 @@ object DataIntegrityManager {
             changed = true
         }
 
+        val correctedSellMultiplier = correct(data.sellMultiplierLevel, data.sellMultiplierMaxLevel)
+        if (data.sellMultiplierLevel != correctedSellMultiplier) {
+            data.sellMultiplierLevel = correctedSellMultiplier
+            changed = true
+        }
+
+        val correctedTokenFinder = correct(data.tokenFinderLevel, data.tokenFinderMaxLevel)
+        if (data.tokenFinderLevel != correctedTokenFinder) {
+            data.tokenFinderLevel = correctedTokenFinder
+            changed = true
+        }
+
+        val correctedJackpot = correct(data.jackpotLevel, data.jackpotMaxLevel)
+        if (data.jackpotLevel != correctedJackpot) {
+            data.jackpotLevel = correctedJackpot
+            changed = true
+        }
+
+        val correctedCombo = correct(data.comboLevel, data.comboMaxLevel)
+        if (data.comboLevel != correctedCombo) {
+            data.comboLevel = correctedCombo
+            changed = true
+        }
+
+        val correctedProcPower = correct(data.procPowerLevel, data.procPowerMaxLevel)
+        if (data.procPowerLevel != correctedProcPower) {
+            data.procPowerLevel = correctedProcPower
+            changed = true
+        }
+
         return changed
     }
 

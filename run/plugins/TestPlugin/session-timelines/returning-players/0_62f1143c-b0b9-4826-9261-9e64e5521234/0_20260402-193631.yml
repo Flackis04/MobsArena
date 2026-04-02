@@ -1,0 +1,18 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+finishedTutorial: true
+startedAt: '2026-04-02 19:36:31'
+endedAt: '2026-04-02 19:38:19'
+logoffSpot:
+  world: mine
+  x: -1.6682075503003595
+  y: 53.0
+  z: -25.62240297676676
+  yaw: 96.03479
+  pitch: 14.525008
+timeline:
+- 2026-04-02 19:36:31 | Joined at mine @ 0.5, 53.0, -11.5
+- '2026-04-02 19:36:32 | Broke following blocks at mine: 223x Deepslate, 7x Deepslate
+  Gold Ore, 3x Deepslate Diamond Ore, 2x <#FFD700>GOLD BLOCK, 1x <#A06CD5>AMETHYST
+  BLOCK, 1x Deepslate Emerald Ore'
+- 2026-04-02 19:38:19 | Logged off at mine @ -1.7, 53.0, -25.6

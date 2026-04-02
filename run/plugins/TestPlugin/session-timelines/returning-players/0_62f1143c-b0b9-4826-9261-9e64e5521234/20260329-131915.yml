@@ -1,0 +1,20 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-29 13:19:15'
+endedAt: '2026-03-29 13:22:42'
+logoffSpot:
+  world: mine
+  x: -8.93989439210059
+  y: 65.0
+  z: -46.69071595150851
+  yaw: 47.784264
+  pitch: 9.585946
+timeline:
+- 2026-03-29 13:19:15 | Joined at mine @ 0.5, 100.0, -40.5
+- 2026-03-29 13:19:18 | Teleported to mine @ 0.5, 65.5, -55.5
+- '2026-03-29 13:20:19 | Broke following blocks at mine: 4x Deepslate Gold Ore, 3x
+  Deepslate Emerald Ore, 2x Deepslate, 2x Deepslate Diamond Ore, 1x <#A06CD5>AMETHYST
+  BLOCK'
+- '2026-03-29 13:20:27 | Sold all backpack contents: 79 items for 2.08K <#FFFF00>Coins'
+- '2026-03-29 13:22:41 | Command: /newplayer'
+- 2026-03-29 13:22:42 | Logged off at mine @ -8.9, 65.0, -46.7

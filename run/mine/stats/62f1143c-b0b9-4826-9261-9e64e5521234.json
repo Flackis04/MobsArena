@@ -1,0 +1,53 @@
+{
+  "stats": {
+    "minecraft:picked_up": {
+      "minecraft:amethyst_block": 8,
+      "minecraft:diamond": 1,
+      "minecraft:red_candle": 33,
+      "minecraft:cobbled_deepslate": 23
+    },
+    "minecraft:dropped": {
+      "minecraft:mace": 1,
+      "minecraft:wooden_axe": 1,
+      "minecraft:wooden_sword": 1,
+      "minecraft:bread": 3,
+      "minecraft:wind_charge": 24
+    },
+    "minecraft:mined": {
+      "minecraft:deepslate": 55,
+      "minecraft:deepslate_diamond_ore": 2
+    },
+    "minecraft:used": {
+      "minecraft:sculk_shrieker": 3,
+      "minecraft:sculk_catalyst": 11,
+      "minecraft:barrier": 1,
+      "minecraft:raw_iron_block": 3,
+      "minecraft:diamond_pickaxe": 57,
+      "minecraft:red_candle": 1,
+      "minecraft:deepslate": 36,
+      "minecraft:barrel": 2,
+      "minecraft:raw_gold_block": 2,
+      "minecraft:bedrock": 14
+    },
+    "minecraft:custom": {
+      "minecraft:time_since_rest": 187139,
+      "minecraft:walk_one_cm": 334730,
+      "minecraft:leave_game": 268,
+      "minecraft:damage_taken": 1279,
+      "minecraft:play_time": 1526143,
+      "minecraft:jump": 1710,
+      "minecraft:time_since_death": 187139,
+      "minecraft:drop": 5,
+      "minecraft:open_barrel": 32,
+      "minecraft:sprint_one_cm": 802306,
+      "minecraft:open_chest": 3,
+      "minecraft:fall_one_cm": 253913,
+      "minecraft:total_world_time": 1526143,
+      "minecraft:fly_one_cm": 822192,
+      "minecraft:crouch_one_cm": 14974,
+      "minecraft:sneak_time": 7406,
+      "minecraft:deaths": 15
+    }
+  },
+  "DataVersion": 4671
+}

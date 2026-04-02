@@ -10,16 +10,14 @@ import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitRunnable
-import org.bukkit.scheduler.BukkitTask
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.max
-import kotlin.math.pow
 
 object MineManager {
     private const val HALF_BOX_SIZE = 20 //max = 20 or 60
     private const val MINE_MIN_Y = 32
-    private const val MINE_MAX_Y = 64
+    private const val MINE_MAX_Y = 52
     private const val INITIAL_MINE_CENTER_X = 0
     private const val INITIAL_MINE_CENTER_Z = -12
     private const val SPAWN_X = 0.5
@@ -28,7 +26,6 @@ object MineManager {
     private const val MINE_GAP_BLOCKS = 3
     private const val ZONE_BUILD_LIMIT = 132
     private const val RESET_THRESHOLD = 0.04
-    private const val AUTO_RESET_INTERVAL_TICKS = 20L * 60L * 5L
 
     private val mineOre = mutableMapOf<String, Material>()
     private val veinBounds = mutableListOf<Cuboid>()
@@ -39,10 +36,6 @@ object MineManager {
     val mine: Cuboid get() = defaultMineLayout.mine
     val mineArea: Cuboid get() = defaultMineLayout.mineArea
     private val singleMineBlocks = mine.volume()
-    private var minedBlocksSinceReset = 0
-    private var resetQueued = false
-    private var autoResetTask: BukkitTask? = null
-    private var nextResetAtMillis = 0L
 
     val valuables = listOf(
         Material.DEEPSLATE_GOLD_ORE,
@@ -210,7 +203,6 @@ object MineManager {
     private val random = ThreadLocalRandom.current()
 
     fun init() {
-        scheduleAutoReset()
         setMineWorldSpawn()
         MineStatusHologram.init()
         restoreOnlinePlayerMines()
@@ -310,11 +302,11 @@ object MineManager {
         mineOre.clear()
         veinBounds.clear()
         placedVeins = 0
-        minedBlocksSinceReset = 0
-        resetQueued = false
 
         val w = world ?: return
         playerMines.values.forEach { mineData ->
+            mineData.minedBlocksSinceReset = 0
+            mineData.resetQueued = false
             fillMineForLayout(
                 MineLayout(mineData.centerX, mineData.centerZ, mineData.mine, mineData.mineArea),
                 getOwnerValuableMultiplier(mineData.ownerId, valuableWeightMultiplier)
@@ -334,6 +326,8 @@ object MineManager {
         val w = world ?: return
         val mineData = playerMines[ownerId] ?: return
         val layout = MineLayout(mineData.centerX, mineData.centerZ, mineData.mine, mineData.mineArea)
+        mineData.minedBlocksSinceReset = 0
+        mineData.resetQueued = false
 
         layout.mine.forEach(w) { block ->
             mineOre.remove(locKey(block.location))
@@ -388,30 +382,27 @@ object MineManager {
     }
 
     fun startRareOresReset(durationTicks: Long, valuableWeightMultiplier: Double = BossbarManager.weightMultiplier) {
-        autoResetTask?.cancel()
-        autoResetTask = null
         setMine(valuableWeightMultiplier)
-        setResetCountdownTicks(durationTicks)
     }
 
     fun endRareOresReset() {
         setMine()
-        scheduleAutoReset()
         Bukkit.broadcast(TextUtil.toComponent("&9Mine Reset!"))
     }
 
-    private fun resetMine() {
+    private fun resetMine(ownerId: UUID) {
+        val mineData = playerMines[ownerId] ?: return
         veinBounds.clear()
         placedVeins = 0
-        minedBlocksSinceReset = 0
-        resetQueued = false
+        mineData.minedBlocksSinceReset = 0
+        mineData.resetQueued = false
         if (RareOresEventManager.isActive()) {
-            setMine(RareOresEventManager.getValuableWeightMultiplier())
-            Bukkit.broadcast(TextUtil.toComponent("&9Mine Reset!"))
+            refreshMineFor(ownerId)
+            Bukkit.getPlayer(ownerId)?.sendMessage(TextUtil.colorize("&9Your mine reset!"))
             return
         }
-        setMine()
-        scheduleAutoReset()
+        refreshMineFor(ownerId)
+        Bukkit.getPlayer(ownerId)?.sendMessage(TextUtil.colorize("&9Your mine reset!"))
     }
 
     fun getCenterLocation(heightOffset: Double = 0.0): Location {
@@ -475,37 +466,25 @@ object MineManager {
             .filter { player -> !ActivityTracker.isAfk(player) }
     }
 
-    fun getClearedPercent(): Double {
-        val totalMineBlocks = (singleMineBlocks * playerMines.size.coerceAtLeast(1)).toDouble()
-        return minedBlocksSinceReset.toDouble() / totalMineBlocks * 100.0
+    fun getClearedPercent(ownerId: UUID): Double {
+        val mineData = playerMines[ownerId] ?: return 0.0
+        return mineData.minedBlocksSinceReset.toDouble() / singleMineBlocks.toDouble() * 100.0
     }
 
-    fun getClearedPercentText(): String = String.format("%.1f%%", getClearedPercent())
+    fun getClearedPercentText(ownerId: UUID): String = String.format("%.1f%%", getClearedPercent(ownerId))
 
-    fun getTimeUntilResetText(): String {
-        val remainingMillis = (nextResetAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
-        val totalSeconds = if (remainingMillis == 0L) 0L else (remainingMillis + 999L) / 1000L
-        val minutes = totalSeconds / 60L
-        val seconds = totalSeconds % 60L
-        return String.format("%02d:%02d", minutes, seconds)
-    }
-
-    fun setResetCountdownTicks(ticks: Long) {
-        nextResetAtMillis = System.currentTimeMillis() + (ticks.coerceAtLeast(0L) * 50L)
-    }
-
-    fun recordBlocksMined(amount: Int = 1) {
+    fun recordBlocksMined(ownerId: UUID, amount: Int = 1) {
         if (amount <= 0) return
-        minedBlocksSinceReset += amount
-        if (resetQueued) return
+        val mineData = playerMines[ownerId] ?: return
+        mineData.minedBlocksSinceReset += amount
+        if (mineData.resetQueued) return
 
-        val totalMineBlocks = (singleMineBlocks * playerMines.size.coerceAtLeast(1)).toDouble()
-        val clearedPercent = minedBlocksSinceReset.toDouble() / totalMineBlocks
+        val clearedPercent = mineData.minedBlocksSinceReset.toDouble() / singleMineBlocks.toDouble()
         if (clearedPercent >= RESET_THRESHOLD) {
-            resetQueued = true
+            mineData.resetQueued = true
             Bukkit.getScheduler().runTask(TestPlugin.instance, Runnable {
-                if (resetQueued) {
-                    resetMine()
+                if (mineData.resetQueued) {
+                    resetMine(ownerId)
                 }
             })
         }
@@ -577,7 +556,8 @@ object MineManager {
         val mineData = playerMines[player.uniqueId] ?: return false
         val targetBlock = getRandomLightningTargetBlock(mineData.mine) ?: return false
         targetBlock.world.spawnEntity(targetBlock.location.clone().add(0.5, 0.0, 0.5), EntityType.LIGHTNING_BOLT)
-        val radius = if (MasteryManager.hasLightningAreaUpgrade(data)) 2 else 1
+        val radius = (if (MasteryManager.hasLightningAreaUpgrade(data)) 2 else 1) +
+            UpgradeFormulas.getProcPowerLightningRadiusBonus(data.procPowerLevel, data.procPowerMaxLevel)
         for (dx in -radius..radius) {
             for (dz in -radius..radius) {
                 val block = targetBlock.world.getBlockAt(targetBlock.x + dx, targetBlock.y, targetBlock.z + dz)
@@ -586,7 +566,7 @@ object MineManager {
             }
         }
         if (sendMessage) {
-            player.sendMessage(TextUtil.colorize("&eLightning upgraded a section of the mine."))
+            RetentionUpgradeManager.queueActivationMessage(player.uniqueId, "&eLightning activated")
         }
         return true
     }
@@ -624,7 +604,14 @@ object MineManager {
                     val drops = if (actualType in valuables) {
                         getConfiguredDrops(actualType, fortuneLevel, fortuneMaxLevel, fortuneScrollBonus)
                     } else {
-                        block.getDrops(ItemStack(Material.DIAMOND_PICKAXE), player)
+                        block.getDrops(ItemStack(Material.DIAMOND_PICKAXE), player).map { drop ->
+                            drop.clone().apply {
+                                amount = BlockRemovalManager.rollScaledAmount(
+                                    amount,
+                                    BlockRemovalManager.getFortuneMultiplier(actualType, fortuneLevel, fortuneMaxLevel, fortuneScrollBonus)
+                                )
+                            }
+                        }
                     }
                     for (drop in drops) {
                         if (drop.type == Material.AIR || drop.amount <= 0) continue
@@ -641,6 +628,13 @@ object MineManager {
 
         if (aggregatedDrops.isEmpty() || blocksCleared <= 0) return false
 
+        val jackhammerMultiplier = UpgradeFormulas.getProcPowerJackhammerMultiplier(ownerData.procPowerLevel, ownerData.procPowerMaxLevel)
+        if (jackhammerMultiplier > 1.0) {
+            aggregatedDrops.replaceAll { _, amount ->
+                BlockRemovalManager.rollScaledAmount(amount, jackhammerMultiplier)
+            }
+        }
+
         val rarestDrop = aggregatedDrops.maxByOrNull { (material, _) -> valuableDrops.indexOf(material) } ?: return false
         val rarestIndex = valuableDrops.indexOf(rarestDrop.key)
         val rarestName = if (rarestIndex >= 0) valuableNames[rarestIndex] else rarestDrop.key.name
@@ -649,7 +643,7 @@ object MineManager {
         val payoutDrops = aggregatedDrops.map { (material, amount) -> createValuableItem(material, amount) }
         BlockRemovalManager.deliverDrops(player, payoutDrops, player.location)
         ExperienceManager.giveRawExperience(player, totalBaseExperience)
-        recordBlocksMined(blocksCleared)
+        recordBlocksMined(player.uniqueId, blocksCleared)
         player.sendMessage(
             TextUtil.colorize(
                 if (clearedLayers.size >= 2) {
@@ -660,6 +654,10 @@ object MineManager {
             )
         )
         player.sendMessage(TextUtil.colorize("&7Rarest find: $rarestName &7x&f${TextUtil.formatNum(rarestAmount)}"))
+        RetentionUpgradeManager.queueActivationMessage(
+            player.uniqueId,
+            if (clearedLayers.size >= 2) "&6Jackhammer x2 layers" else "&6Jackhammer activated"
+        )
         return true
     }
 
@@ -721,7 +719,8 @@ object MineManager {
     }
 
     private fun getNextLightningTier(material: Material, data: PlayerData): Material? {
-        val tierSkip = MasteryManager.getLightningTierSkip(data)
+        val tierSkip = MasteryManager.getLightningTierSkip(data) +
+            UpgradeFormulas.getProcPowerLightningTierBonus(data.procPowerLevel, data.procPowerMaxLevel)
         if (material == Material.DEEPSLATE) {
             return valuables.getOrNull(tierSkip) ?: valuables.last()
         }
@@ -864,9 +863,6 @@ object MineManager {
         val clanMineWeight = ClanManager.getMineWeightMultiplier(ownerId)
         return effectiveEventMultiplier * donorMineWeight * ascensionMineWeight * oreFrequency * clanMineWeight
     }
-
-    private fun getAscensionMineWeightMultiplier(data: PlayerData): Double =
-        if (data.ascension <= 0) 1.0 else ASCENSION_MINE_WEIGHT_MULTIPLIER_PER_ASCENSION.pow(data.ascension.toDouble())
 
     private fun findNearestMineCenter(): Pair<Int, Int> {
         if (playerMines.isEmpty()) return INITIAL_MINE_CENTER_X to INITIAL_MINE_CENTER_Z
@@ -1021,16 +1017,6 @@ object MineManager {
         return false
     }
 
-    private fun scheduleAutoReset() {
-        autoResetTask?.cancel()
-        nextResetAtMillis = System.currentTimeMillis() + (AUTO_RESET_INTERVAL_TICKS * 50L)
-        autoResetTask = Bukkit.getScheduler().runTaskLater(
-            TestPlugin.instance,
-            Runnable { resetMine() },
-            AUTO_RESET_INTERVAL_TICKS
-        )
-    }
-
     private fun locKey(loc: Location): String = "${loc.world?.name}:${loc.blockX},${loc.blockY},${loc.blockZ}"
 
     data class MineLayout(
@@ -1045,7 +1031,9 @@ object MineManager {
         val centerX: Int,
         val centerZ: Int,
         val mine: Cuboid,
-        val mineArea: Cuboid
+        val mineArea: Cuboid,
+        var minedBlocksSinceReset: Int = 0,
+        var resetQueued: Boolean = false
     )
 
     data class Cuboid(val x1: Int, val y1: Int, val z1: Int, val x2: Int, val y2: Int, val z2: Int) {

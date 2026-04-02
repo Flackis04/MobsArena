@@ -1,0 +1,18 @@
+playerId: 3a6a3981-bd3a-4555-acbf-aa39e7237393
+playerName: PerfectNeglect
+startedAt: '2026-03-28 16:02:12'
+endedAt: '2026-03-28 16:02:53'
+logoffSpot:
+  world: mine
+  x: -16.600648942599985
+  y: 53.415645860787464
+  z: -1.2801580847741247
+  yaw: 150.19005
+  pitch: 18.954676
+timeline:
+- 2026-03-28 16:02:12 | Joined at mine @ 0.5, 65.0, -11.5
+- '2026-03-28 16:02:15 | Broke following blocks at mine: 366x Deepslate, 34x Deepslate
+  Gold Ore, 12x Deepslate Diamond Ore, 10x Deepslate Emerald Ore, 5x <#A06CD5>AMETHYST
+  BLOCK, 1x <#FFD700>GOLD BLOCK'
+- '2026-03-28 16:02:50 | Command: /setdata PerfectNeglect rebirth 1'
+- 2026-03-28 16:02:53 | Logged off at mine @ -16.6, 53.4, -1.3

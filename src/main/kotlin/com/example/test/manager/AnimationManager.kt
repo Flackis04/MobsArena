@@ -127,7 +127,7 @@ object AnimationManager {
     ) {
         val data = player?.let { DataStore.get(it.uniqueId) }
         if (data != null && !data.animationsEnabled) {
-            breakBlockImmediately(loc, onStart)
+            breakBlockImmediatelyInternal(loc, onStart)
             return
         }
 
@@ -148,6 +148,10 @@ object AnimationManager {
         activeAnimations.keys.toList().forEach(::clearAnimation)
     }
 
+    fun breakBlockImmediately(loc: Location, onStart: (() -> Unit)? = null) {
+        breakBlockImmediatelyInternal(loc, onStart)
+    }
+
     private fun clearAnimation(key: String) {
         val animation = activeAnimations.remove(key) ?: return
         animation.task?.cancel()
@@ -157,7 +161,7 @@ object AnimationManager {
         }
     }
 
-    private fun breakBlockImmediately(loc: Location, onStart: (() -> Unit)?) {
+    private fun breakBlockImmediatelyInternal(loc: Location, onStart: (() -> Unit)?) {
         val block = loc.block
         block.type = Material.AIR
         MineManager.removeStoredOre(block.location)

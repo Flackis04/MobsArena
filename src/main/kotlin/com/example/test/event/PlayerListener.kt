@@ -52,6 +52,7 @@ class PlayerListener : Listener {
     @EventHandler
     fun onQuit(event: PlayerQuitEvent) {
         LightningRodManager.handleQuit(event.player)
+        RetentionUpgradeManager.reset(event.player.uniqueId)
         MineManager.removeMineFor(event.player.uniqueId)
         Bukkit.getScheduler().runTask(TestPlugin.instance, Runnable {
             ScoreboardManager.refreshTabListForAll()
@@ -145,7 +146,7 @@ class PlayerListener : Listener {
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return
 
         when {
-            ItemManager.isStorage(item) -> {
+            ItemManager.isBackpack(item) -> {
                 event.isCancelled = true
                 StorageGui(player, 0)
             }
@@ -188,7 +189,7 @@ class PlayerListener : Listener {
         val from = event.from
         if (to.blockX == from.blockX && to.blockY == from.blockY && to.blockZ == from.blockZ) return
         val player = event.player
-        if (to.y < 0.0) {
+        if (to.y <= 33.0) {
             val mineCenter = MineManager.getPlayerMineCenterLocation(player, 1.0) ?: MineManager.getSpawnLocation()
             player.teleport(mineCenter)
             return
@@ -268,18 +269,6 @@ fun handlePlayerKill(attacker: Player, victim: Player) {
         return
     }
     attackerData.victims.add(victim.name)
-
-    val stolenDeathpack = StorageManager.getDeathpackContents(victim)
-    val stolenItems = stolenDeathpack.sumOf { it.amount.toLong() }
-    for (item in stolenDeathpack) {
-        if (item.type == Material.AIR || item.amount <= 0) continue
-        StorageManager.addDropToDeathpack(attacker, item.clone())
-    }
-    StorageManager.clearDeathpack(victim)
-    if (stolenItems > 0L) {
-        attacker.sendMessage(TextUtil.colorize("&cLooted &7x${TextUtil.formatNum(stolenItems)} items &cfrom ${victim.name}'s deathpack."))
-        victim.sendMessage(TextUtil.colorize("&cYour deathpack was claimed by ${attacker.name}."))
-    }
 
     attacker.playSound(attacker.location, "entity.lightning_bolt.thunder", 1f, 1f)
     val killReward = 10L

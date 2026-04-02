@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.inventory.ItemStack
+import kotlin.math.ceil
 import kotlin.random.Random
 
 class PickaxeListener : Listener {
@@ -34,6 +35,7 @@ class PickaxeListener : Listener {
 
         val data = DataStore.get(player.uniqueId)
         activateMiningProcs(player, data)
+        RetentionUpgradeManager.recordMineSwing(player)
 
         val context = createBreakContext(player, block, data)
         triggerMineStrikeProcs(player, data, context.originLoc.blockY)
@@ -48,17 +50,23 @@ class PickaxeListener : Listener {
                 data.multiBreakMaxLevel,
                 0.0,
                 data.excavatorActive,
-                data.excavatorEfficiencyLevel
+                ceil(
+                    data.excavatorEfficiencyLevel *
+                        UpgradeFormulas.getProcPowerExcavatorMultiplier(data.procPowerLevel, data.procPowerMaxLevel)
+                ).toInt()
             )
         )
 
+        val minedMaterials = listOf(context.actualType) + extraBlockResult.materialsMined
+
         SessionTimelineManager.recordMining(
             player,
-            listOf(context.actualType) + extraBlockResult.materialsMined,
+            minedMaterials,
             context.originLoc
         )
+        val tokensEarned = RetentionUpgradeManager.tryAwardTokens(player, minedMaterials)
 
-        updateMiningProgress(player, data, extraBlockResult.totalBlocksMined, context.actualType)
+        updateMiningProgress(player, data, extraBlockResult.totalBlocksMined, context.actualType, tokensEarned)
     }
 
     private fun activateMiningProcs(player: Player, data: PlayerData) {
@@ -108,7 +116,7 @@ class PickaxeListener : Listener {
 
         activate()
         MasteryManager.recordActivation(player, key)
-        player.sendMessage(TextUtil.colorize(activationMessage))
+        RetentionUpgradeManager.queueActivationMessage(player.uniqueId, activationMessage)
         org.bukkit.Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
             deactivate()
         }, durationTicks)
@@ -189,12 +197,22 @@ class PickaxeListener : Listener {
         )
     }
 
-    private fun updateMiningProgress(player: Player, data: PlayerData, blocksMined: Int, actualType: Material) {
+    private fun updateMiningProgress(player: Player, data: PlayerData, blocksMined: Int, actualType: Material, tokensEarned: Long) {
         if (actualType in MineManager.mineableBlocks) {
-            MineManager.recordBlocksMined()
+            val mineOwnerId = MineManager.getMineOwnerAt(player.location) ?: player.uniqueId
+            MineManager.recordBlocksMined(mineOwnerId)
         }
 
         data.blocksMined += blocksMined
+        ClanManager.recordBlocksMined(player.uniqueId, blocksMined)
+        val actionBarParts = mutableListOf<String>()
+        actionBarParts += RetentionUpgradeManager.consumeActivationMessages(player.uniqueId)
+        if (tokensEarned > 0L) {
+            actionBarParts += "&b+${TextUtil.formatNum(tokensEarned)} tokens"
+        }
+        if (actionBarParts.isNotEmpty()) {
+            ActionBarManager.sendActionBarFor(player, 1.2, actionBarParts.joinToString(" &8| "))
+        }
         if (!TutorialManager.isTutorialMode(player)) {
             BossbarManager.blocksMinedGlobally += blocksMined
             if (BossbarManager.isBlocksMinedEvent && !BossbarManager.isActive) {

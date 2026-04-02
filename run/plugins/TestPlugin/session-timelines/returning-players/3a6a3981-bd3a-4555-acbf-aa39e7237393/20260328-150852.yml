@@ -1,0 +1,15 @@
+playerId: 3a6a3981-bd3a-4555-acbf-aa39e7237393
+playerName: PerfectNeglect
+startedAt: '2026-03-28 15:08:52'
+endedAt: '2026-03-28 15:09:23'
+logoffSpot:
+  world: mine
+  x: 0.5
+  y: 44.0
+  z: -55.5
+  yaw: 68.55303
+  pitch: 7.9878025
+timeline:
+- 2026-03-28 15:08:52 | Joined at mine @ 0.5, 44.0, -55.5
+- 2026-03-28 15:09:08 | Teleported to mine @ 0.5, 44.0, -55.5
+- 2026-03-28 15:09:23 | Logged off at mine @ 0.5, 44.0, -55.5

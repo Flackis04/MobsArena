@@ -1,0 +1,12 @@
+clans:
+  'yes':
+    name: 'yes'
+    ownerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+    members:
+    - 62f1143c-b0b9-4826-9261-9e64e5521234
+    upgrades: {}
+    points: 97
+    totalPointsEarned: 97
+    level: 0
+    blocksContributed: 3859
+    blocksTowardsNextPoint: 19

@@ -508,8 +508,8 @@ class AutoMinerCommand(private val gui: AutoMinerGui) : CommandExecutor {
         if (DataStore.get(player.uniqueId).rebirth < 1) {
             player.showTitle(
                 Title.title(
-                    TextUtil.toComponent("&cRebirth A Required"),
-                    TextUtil.toComponent("&7You need rebirth A before using autominers."),
+                    TextUtil.toComponent("&cRebirth B Required"),
+                    TextUtil.toComponent("&7You need rebirth B before using autominers."),
                     Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(3), Duration.ofMillis(500))
                 )
             )

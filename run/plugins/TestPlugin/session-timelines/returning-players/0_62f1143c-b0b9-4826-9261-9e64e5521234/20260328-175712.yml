@@ -1,0 +1,18 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-28 17:57:12'
+endedAt: '2026-03-28 18:04:31'
+logoffSpot:
+  world: mine
+  x: -3.588087852087382
+  y: 65.0
+  z: -30.947574934044763
+  yaw: 37.112823
+  pitch: 16.775396
+timeline:
+- 2026-03-28 17:57:12 | Joined at mine @ 0.5, 65.0, -55.5
+- '2026-03-28 17:57:17 | Command: /giveclanpoints 1'
+- '2026-03-28 17:57:20 | Command: /giveclanpoints Flackis04 1'
+- '2026-03-28 17:57:28 | Command: /clan'
+- '2026-03-28 17:59:54 | Command: /rent'
+- 2026-03-28 18:04:31 | Logged off at mine @ -3.6, 65.0, -30.9

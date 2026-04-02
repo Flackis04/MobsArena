@@ -135,7 +135,14 @@ object BlockRemovalManager {
             val valuableIndex = MineManager.valuableDrops.indexOf(drop.type)
             if (valuableIndex != -1) {
                 val clanAdjustedAmount = rollScaledAmount(drop.amount, ClanManager.getPlayerFortuneMultiplier(player.uniqueId))
-                val totalGenerated = if (data.oreBoostActive) clanAdjustedAmount * 2 else clanAdjustedAmount
+                val comboAdjustedAmount = rollScaledAmount(clanAdjustedAmount, RetentionUpgradeManager.getComboMultiplier(player))
+                val oreBoostMultiplier = if (data.oreBoostActive) {
+                    UpgradeFormulas.getProcPowerOreBoostMultiplier(data.procPowerLevel, data.procPowerMaxLevel)
+                } else {
+                    1.0
+                }
+                val oreBoostAdjustedAmount = rollScaledAmount(comboAdjustedAmount, oreBoostMultiplier)
+                val totalGenerated = RetentionUpgradeManager.tryApplyJackpot(player, oreBoostAdjustedAmount)
                 if (totalGenerated > 0) {
                     val payoutStack = MineManager.createValuableItem(drop.type, totalGenerated)
                     if (!hasStorage) {

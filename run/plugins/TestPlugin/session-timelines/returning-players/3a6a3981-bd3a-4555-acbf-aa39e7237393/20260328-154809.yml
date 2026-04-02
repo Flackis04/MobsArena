@@ -1,0 +1,18 @@
+playerId: 3a6a3981-bd3a-4555-acbf-aa39e7237393
+playerName: PerfectNeglect
+startedAt: '2026-03-28 15:48:09'
+endedAt: '2026-03-28 15:50:22'
+logoffSpot:
+  world: mine
+  x: 10.652534293523876
+  y: 5.0
+  z: -55.876933529331495
+  yaw: 2.0335145
+  pitch: -38.27116
+timeline:
+- 2026-03-28 15:48:09 | Joined at mine @ 0.5, 65.0, -11.5
+- '2026-03-28 15:48:16 | Command: /shield on'
+- '2026-03-28 15:48:38 | Command: /shield off'
+- '2026-03-28 15:48:41 | Command: /spawn'
+- 2026-03-28 15:48:41 | Teleported to mine @ 0.5, 100.0, -40.5
+- 2026-03-28 15:50:22 | Logged off at mine @ 10.7, 5.0, -55.9

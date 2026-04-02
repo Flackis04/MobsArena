@@ -68,7 +68,7 @@ object MineStatusHologram {
             weight.text(TextUtil.toComponent("<#A89064>Net Mine Weight: <#6EF8FF>${netMineWeight}x"))
             progress.text(
                 TextUtil.toComponent(
-                    "<#A89064>Mined: <#6EF8FF>${MineManager.getClearedPercentText()} <#6C6458>| <#A89064>Reset In <#FFFFFF>${MineManager.getTimeUntilResetText()}"
+                    "<#A89064>Mined: <#6EF8FF>${MineManager.getClearedPercentText(mine.ownerId)} <#6C6458>| <#A89064>Reset Threshold: <#FFFFFF>4.0%"
                 )
             )
         }

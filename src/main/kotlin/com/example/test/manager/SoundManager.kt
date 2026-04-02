@@ -7,18 +7,17 @@ object SoundManager {
     const val EXPERIENCE_PICKUP_SOUND = "entity.experience_orb.pickup"
     const val LEVEL_UP_SOUND = "entity.player.levelup"
     const val LEVEL_UP_ACCENT_SOUND = "block.amethyst_block.chime"
-    const val BREAK_IMPACT_VOLUME = 0.5f
-    const val RARE_BREAK_VOLUME = 0.7f
+    const val BREAK_IMPACT_VOLUME = 0.42f
+    const val RARE_BREAK_VOLUME = 0.5f
 
     const val DEFAULT_VOLUME = 1f
     const val ITEM_PICKUP_VOLUME = 0.5f
 
-    const val EXCAVATOR_BREAK_PITCH_MULTIPLIER = 0.1f
+    const val EXCAVATOR_BREAK_PITCH_MULTIPLIER = 0.92f
     const val ORE_BOOST_PICKUP_PITCH_MULTIPLIER = 1.5f
 
-    const val VALUABLE_BREAK_MIN_PITCH = 0.45f
-    const val VALUABLE_BREAK_MAX_PITCH = 0.7f
-    const val FIRST_VALUABLE_BREAK_PITCH = 1.2f
+    const val VALUABLE_BREAK_MIN_PITCH = 0.88f
+    const val VALUABLE_BREAK_MAX_PITCH = 1.06f
 
     fun getValuablePickupPitch(valuableIndex: Int, oreBoostActive: Boolean, excavatorActive: Boolean): Float {
         val pitchBase = (1 + valuableIndex / 9.0).toFloat()
@@ -49,7 +48,13 @@ object SoundManager {
             org.bukkit.Material.NETHERITE_BLOCK,
             org.bukkit.Material.ANCIENT_DEBRIS
         ) -> "block.amethyst_block.break"
-        else -> "block.stone.break"
+        blockType in setOf(
+            org.bukkit.Material.DEEPSLATE,
+            org.bukkit.Material.COBBLED_DEEPSLATE,
+            org.bukkit.Material.BLACKSTONE,
+            org.bukkit.Material.BASALT
+        ) -> "block.tuff.break"
+        else -> "block.calcite.break"
     }
 
     fun getMineBreakVolume(blockType: org.bukkit.Material): Float =

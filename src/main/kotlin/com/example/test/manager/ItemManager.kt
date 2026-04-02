@@ -17,12 +17,10 @@ object ItemManager {
     lateinit var soulFragment: ItemStack
     lateinit var procBooster: ItemStack
     lateinit var storage: ItemStack
-    lateinit var deathStorage: ItemStack
     lateinit var pickaxe: ItemStack
     lateinit var dynamite: ItemStack
     lateinit var chargedDynamite: ItemStack
     lateinit var nuke: ItemStack
-    lateinit var upgradeSnowball: ItemStack
     lateinit var lightningRodDeployable: ItemStack
 
     const val COIN_NAME = "<#FFFF00>Coins"
@@ -66,12 +64,10 @@ object ItemManager {
             )
         }
 
-        storage = makeStorage(false)
-        deathStorage = makeStorage(true)
+        storage = makeStorage()
         dynamite = makeDynamite()
         chargedDynamite = makeChargedDynamite()
         nuke = makeNuke()
-        upgradeSnowball = makeUpgradeSnowball()
         lightningRodDeployable = makeLightningRodDeployable()
     }
 
@@ -100,17 +96,13 @@ object ItemManager {
 
     fun isBackpack(item: ItemStack?): Boolean = item?.isSimilar(storage) == true
 
-    fun isDeathpack(item: ItemStack?): Boolean = item?.isSimilar(deathStorage) == true
-
-    fun isStorage(item: ItemStack?): Boolean = isBackpack(item) || isDeathpack(item)
+    fun isStorage(item: ItemStack?): Boolean = isBackpack(item)
 
     fun isDynamite(item: ItemStack?): Boolean = getUtilityItemType(item) == "dynamite"
 
     fun isChargedDynamite(item: ItemStack?): Boolean = getUtilityItemType(item) == "charged_dynamite"
 
     fun isNuke(item: ItemStack?): Boolean = getUtilityItemType(item) == "nuke"
-
-    fun isUpgradeSnowball(item: ItemStack?): Boolean = getUtilityItemType(item) == "upgrade_snowball"
 
     fun isLightningRodDeployable(item: ItemStack?): Boolean = getUtilityItemType(item) == "lightning_rod_deployable"
 
@@ -207,14 +199,11 @@ object ItemManager {
 
     fun getPickaxeEfficiencyLevel(playerLevel: Int, rebirth: Int): Int = 12 + (playerLevel.coerceAtLeast(0) / 8) + rebirth
 
-    fun makeStorage(isDeathpack: Boolean): ItemStack {
-        val storage = ItemStack(if (isDeathpack) Material.ENDER_CHEST else Material.CHEST)
+    fun makeStorage(): ItemStack {
+        val storage = ItemStack(Material.CHEST)
         storage.editMeta { meta ->
             meta.displayName(
-                storageStyleName(
-                    if (isDeathpack) "deathpack" else "backpack",
-                    if (isDeathpack) NamedTextColor.RED else NamedTextColor.GOLD
-                )
+                storageStyleName("backpack", NamedTextColor.GOLD)
             )
             meta.lore(
                 listOf(
@@ -274,23 +263,6 @@ object ItemManager {
         return item
     }
 
-    fun makeUpgradeSnowball(): ItemStack {
-        val item = ItemStack(Material.SNOWBALL)
-        item.editMeta { meta ->
-            meta.displayName(storageStyleName("upgrade snowball", NamedTextColor.AQUA))
-            meta.lore(
-                listOf(
-                    TextUtil.toComponent("&7Throw at mine blocks to tier them up").decoration(TextDecoration.ITALIC, false),
-                    TextUtil.toComponent("&7Hit block: &b+3 tiers").decoration(TextDecoration.ITALIC, false),
-                    TextUtil.toComponent("&7Nearby blocks get fewer tier ups").decoration(TextDecoration.ITALIC, false)
-                )
-            )
-            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
-            meta.persistentDataContainer.set(utilityItemTypeKey, PersistentDataType.STRING, "upgrade_snowball")
-        }
-        return item
-    }
-
     fun makeLightningRodDeployable(): ItemStack {
         val item = ItemStack(Material.LIGHTNING_ROD)
         item.editMeta { meta ->
@@ -299,7 +271,7 @@ object ItemManager {
                 listOf(
                     TextUtil.toComponent("&7Right-click in your mine to deploy").decoration(TextDecoration.ITALIC, false),
                     TextUtil.toComponent("&7Stacks up to &e100 &7times on your mine").decoration(TextDecoration.ITALIC, false),
-                    TextUtil.toComponent("&7The more you stack, the bigger the rod becomes").decoration(TextDecoration.ITALIC, false),
+                    TextUtil.toComponent("&7The more you stack, the more oxidized it looks").decoration(TextDecoration.ITALIC, false),
                     TextUtil.toComponent("&7While active it can trigger &e3x lightning &7at once").decoration(TextDecoration.ITALIC, false),
                     TextUtil.toComponent("&73x Lightning chance: &e1.0x -> 2.5x &7your Lightning proc chance").decoration(TextDecoration.ITALIC, false)
                 )

@@ -1,0 +1,15 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-29 13:40:47'
+endedAt: '2026-03-29 13:40:50'
+logoffSpot:
+  world: mine
+  x: 0.12908642063741405
+  y: 65.0
+  z: -54.15164751077046
+  yaw: 7.977968
+  pitch: 6.0282726
+timeline:
+- 2026-03-29 13:40:47 | Joined at mine @ 0.5, 65.0, -55.5
+- '2026-03-29 13:40:49 | Command: /newplayer'
+- 2026-03-29 13:40:50 | Logged off at mine @ 0.1, 65.0, -54.2

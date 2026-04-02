@@ -1,0 +1,17 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+finishedTutorial: true
+startedAt: '2026-04-02 19:56:49'
+endedAt: '2026-04-02 19:57:52'
+logoffSpot:
+  world: mine
+  x: -1.575724232718816
+  y: 53.0
+  z: -8.771153888394183
+  yaw: 96.833534
+  pitch: 14.670236
+timeline:
+- 2026-04-02 19:56:49 | Joined at mine @ 0.5, 53.0, -11.5
+- '2026-04-02 19:56:55 | Command: /givecoins Flackis04 10000000000000'
+- 2026-04-02 19:56:58 | Upgraded XP Gain - Lvl 4 from level 4 to 250 for 2.53M <#FFFF00>Coins
+- 2026-04-02 19:57:52 | Logged off at mine @ -1.6, 53.0, -8.8

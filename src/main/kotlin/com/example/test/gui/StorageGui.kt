@@ -156,6 +156,8 @@ class StorageGui(
                         )
                     )
                     ScoreboardManager.updateBoard(player)
+                    player.closeInventory()
+                    return@GuiItem
                 }
                 render()
                 gui.update()
@@ -220,36 +222,31 @@ class StorageGui(
         val data = DataStore.get(player.uniqueId)
         val tutorialMode = TutorialManager.isTutorialMode(player)
         val eventMultiplier = if (!tutorialMode && BossbarManager.hasActiveSellMultiplier()) BossbarManager.multiplier else 1.0
-        val deathpackValueMultiplier = if (data.hasEnabledPvp) StorageManager.getDeathpackValueMultiplier(player) else 1.0
         val baseSellMultiplier = KitManager.getEffectiveSellMultiplier(player)
+        val upgradeSellMultiplier = UpgradeFormulas.getSellMultiplier(data.sellMultiplierLevel, data.sellMultiplierMaxLevel)
         val finalSellMultiplier = StorageManager.resolveSellMultiplier(player)
-        val totalPreviewValue = StorageManager.sellAllPreview(player).totalValue
+        val netSellMultiplier = StorageManager.getNetSellMultiplier(player)
 
         val lore = mutableListOf(
             "&7Permanent multiplier: &b${TextUtil.formatNum(data.multiplier)}x"
         )
-        if (data.hasEnabledPvp) {
-            lore += "&7Deathpack value multiplier: &c+${TextUtil.formatNum(deathpackValueMultiplier - 1.0)}x"
-        }
         if (!tutorialMode && BossbarManager.hasActiveSellMultiplier()) {
             lore += "&7Event sell multiplier: &d${TextUtil.formatNum(eventMultiplier)}x"
         }
 
         lore += ""
-        lore += "&7Sell multiplier: &f${TextUtil.formatNum(baseSellMultiplier)}x"
-        if (!tutorialMode && BossbarManager.hasActiveSellMultiplier()) {
-            lore += "&7With active event: &f${TextUtil.formatNum(finalSellMultiplier)}x"
-        }
-        if (data.hasEnabledPvp) {
-            lore += "&7Current ${storageName().lowercase()} value: &a${TextUtil.formatNum(totalPreviewValue)} ${ItemManager.COIN_NAME_PLURAL}"
-        }
+        lore += "&7Rank / passive sell: &f${TextUtil.formatNum(baseSellMultiplier)}x"
+        lore += "&7Upgrade sell multiplier: &6${TextUtil.formatNum(upgradeSellMultiplier)}x"
+        lore += "&7Total sell multiplier: &f${TextUtil.formatNum(finalSellMultiplier)}x"
+        lore += "&7Net backpack sell multi: &b${TextUtil.formatNum(netSellMultiplier)}x"
+        lore += "&8Includes current valuable mastery sell bonuses"
 
         return createToolbarItem(Material.NETHER_STAR, "&eActive Multipliers", lore)
     }
 
     private fun storageTitle(): String = "&8${storageName()} &7(${player.name})"
 
-    private fun storageName(): String = if (DataStore.get(player.uniqueId).hasEnabledPvp) "Deathpack" else "Backpack"
+    private fun storageName(): String = "Backpack"
 
     private fun isStorable(item: ItemStack?): Boolean {
         if (item == null || item.type == Material.AIR) return false

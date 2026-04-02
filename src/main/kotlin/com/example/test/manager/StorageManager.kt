@@ -42,12 +42,7 @@ object StorageManager {
             }
             .toMutableList()
 
-        val data = DataStore.get(player.uniqueId)
-        if (data.hasEnabledPvp) {
-            data.deathStorageContents = normalizedContents
-        } else {
-            data.storageContents = normalizedContents
-        }
+        DataStore.get(player.uniqueId).storageContents = normalizedContents
     }
 
     fun addDrop(player: Player, itemStack: ItemStack): Int {
@@ -80,29 +75,6 @@ object StorageManager {
         }
         data.storageContents = contents
         return itemStack.amount
-    }
-
-    fun addDropToDeathpack(player: Player, itemStack: ItemStack): Int {
-        val slot = MineManager.valuableDrops.indexOf(itemStack.type)
-        if (slot == -1 || itemStack.amount <= 0) return 0
-
-        val contents = getNormalizedContents(DataStore.get(player.uniqueId).deathStorageContents)
-        val existing = contents[slot]
-        if (existing.type == Material.AIR) {
-            contents[slot] = ItemStack(itemStack.type, itemStack.amount)
-        } else {
-            existing.amount += itemStack.amount
-        }
-
-        DataStore.get(player.uniqueId).deathStorageContents = contents
-        return itemStack.amount
-    }
-
-    fun getDeathpackContents(player: Player): MutableList<ItemStack> =
-        getNormalizedContents(DataStore.get(player.uniqueId).deathStorageContents)
-
-    fun clearDeathpack(player: Player) {
-        DataStore.get(player.uniqueId).deathStorageContents = mutableListOf()
     }
 
     fun sellAll(player: Player): SellResult {
@@ -170,8 +142,6 @@ object StorageManager {
             totalValue += (baseValue * item.amount * resolveSellMultiplier(player)).toLong()
         }
 
-        totalValue = applyDeathpackValueMultiplier(player, totalValue)
-
         return SellResult(totalItems, totalValue)
     }
 
@@ -200,15 +170,30 @@ object StorageManager {
     }
 
     fun resolveSellMultiplier(player: Player): Double {
-        val multiplier = KitManager.getEffectiveSellMultiplier(player)
+        val data = DataStore.get(player.uniqueId)
+        val multiplier = KitManager.getEffectiveSellMultiplier(player) *
+            UpgradeFormulas.getSellMultiplier(data.sellMultiplierLevel, data.sellMultiplierMaxLevel)
         if (TutorialManager.isTutorialMode(player)) return multiplier
         return if (BossbarManager.hasActiveSellMultiplier()) multiplier * BossbarManager.multiplier else multiplier
     }
 
-    fun getDeathpackValueMultiplier(player: Player): Double {
-        if (!DataStore.get(player.uniqueId).hasEnabledPvp) return 1.0
-        val baseValue = getBaseStorageSellValue(player)
-        return 1.0 + (baseValue.toDouble() / 400000)
+    fun getNetSellMultiplier(player: Player): Double {
+        val contents = getContents(player)
+        var rawBaseValue = 0L
+        var actualValue = 0L
+
+        for (item in contents) {
+            if (item.type == Material.AIR || item.amount <= 0) continue
+            val baseValue = getBaseSellValue(item.type) ?: continue
+            val currentValue = getSellValue(player, item.type) ?: continue
+            rawBaseValue += baseValue * item.amount.toLong()
+            actualValue += (currentValue * item.amount * resolveSellMultiplier(player)).toLong()
+        }
+
+        if (rawBaseValue <= 0L) {
+            return resolveSellMultiplier(player)
+        }
+        return actualValue.toDouble() / rawBaseValue.toDouble()
     }
 
     fun getBaseStorageSellValue(player: Player): Long {
@@ -229,15 +214,7 @@ object StorageManager {
         val totalValue: Long
     )
 
-    private fun getActiveStorage(player: Player): MutableList<ItemStack> {
-        val data = DataStore.get(player.uniqueId)
-        return if (data.hasEnabledPvp) data.deathStorageContents else data.storageContents
-    }
-
-    private fun applyDeathpackValueMultiplier(player: Player, value: Long): Long {
-        if (!DataStore.get(player.uniqueId).hasEnabledPvp || value <= 0L) return value
-        return (value * getDeathpackValueMultiplier(player)).toLong()
-    }
+    private fun getActiveStorage(player: Player): MutableList<ItemStack> = DataStore.get(player.uniqueId).storageContents
 
     private fun getNormalizedContents(stored: MutableList<ItemStack>): MutableList<ItemStack> {
         val normalized = MutableList(capacity) { ItemStack(Material.AIR) }

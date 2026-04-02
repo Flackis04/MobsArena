@@ -53,7 +53,7 @@ object TutorialManager {
             val mineLocation = MineManager.getPlayerMineCenterLocation(player)?.add(0.0, 1.0, 0.0)
                 ?: MineManager.getSpawnLocation()
             player.teleport(mineLocation)
-            showOrQueueTitle(player, "&aMine Ready", "&7Mine 10 ores.", 10, 40, 10)
+            showOrQueueTitle(player, "&aMine Ready", "&7Mine 5 ores.", 10, 40, 10)
             BossbarManager.refreshPlayer(player)
         }, 70L)
     }
@@ -65,7 +65,7 @@ object TutorialManager {
             BossbarManager.refreshPlayer(player)
         }
 
-        if (data.tutorialActive && !data.hasBroken && data.valuableBlocksBroken >= 10) {
+        if (data.tutorialActive && !data.hasBroken && data.valuableBlocksBroken >= 5) {
             data.hasBroken = true
             showOrQueueTitle(player, "&6Sell Backpack", "&7Open backpack and sell.", 10, 35, 10)
             BossbarManager.refreshPlayer(player)
@@ -132,13 +132,18 @@ object TutorialManager {
     fun isTutorialMode(player: Player): Boolean =
         DataStore.get(player.uniqueId).tutorialActive
 
+    fun hasFinishedTutorial(playerId: java.util.UUID): Boolean {
+        val data = DataStore.get(playerId)
+        return !data.tutorialActive && data.hasSeenUpgradeHint
+    }
+
     fun getBossbar(player: Player): TutorialBossbar? {
         val data = DataStore.get(player.uniqueId)
         if (!data.tutorialActive) return null
         return when {
             !data.hasBroken -> TutorialBossbar(
-                title = "&aTutorial 1/3 Mine 10 Ores &7- &f${data.valuableBlocksBroken.coerceAtMost(10)}/10",
-                progress = (data.valuableBlocksBroken.toDouble() / 10.0).coerceIn(0.01, 1.0),
+                title = "&aTutorial 1/3 Mine 5 Ores &7- &f${data.valuableBlocksBroken.coerceAtMost(5)}/5",
+                progress = (data.valuableBlocksBroken.toDouble() / 5.0).coerceIn(0.01, 1.0),
                 color = BarColor.GREEN,
                 style = BarStyle.SEGMENTED_10
             )

@@ -19,7 +19,6 @@ object DataStore {
         "masteryActivations",
         "masteryLevels",
         "storageContents",
-        "deathStorageContents",
         "autoMinerStorageContents",
         "trustedMinePlayers",
         "hasClaimedBattlepass",
@@ -60,19 +59,6 @@ object DataStore {
             config.set(
                 "$key.storageContents",
                 d.storageContents.mapNotNull { item ->
-                    if (item.type == org.bukkit.Material.AIR || item.amount <= 0) {
-                        null
-                    } else {
-                        mapOf(
-                            "type" to item.type.name,
-                            "amount" to item.amount
-                        )
-                    }
-                }
-            )
-            config.set(
-                "$key.deathStorageContents",
-                d.deathStorageContents.mapNotNull { item ->
                     if (item.type == org.bukkit.Material.AIR || item.amount <= 0) {
                         null
                     } else {
@@ -132,7 +118,6 @@ object DataStore {
             d.upgradeScrollBonuses = loadDoubleMap(key, "upgradeScrollBonuses")
             LevelManager.migrateLegacyScrollBonuses(d)
             d.storageContents = loadStorageContents(key)
-            d.deathStorageContents = loadStorageContents(key, "deathStorageContents")
             d.autoMinerStorageContents = loadStorageContents(key, "autoMinerStorageContents")
             d.trustedMinePlayers = config.getStringList("$key.trustedMinePlayers").toMutableList()
             d.hasClaimedBattlepass = config.getIntegerList("$key.hasClaimedBattlepass").toMutableSet()
@@ -289,6 +274,16 @@ class PlayerData {
     var scrollFinderMaxLevel = LevelManager.scrollFinderMaxLevel
     var backpackLevel = 1
     var backpackMaxLevel = LevelManager.backpackMaxLevel
+    var sellMultiplierLevel = 1
+    var sellMultiplierMaxLevel = LevelManager.sellMultiplierMaxLevel
+    var tokenFinderLevel = 1
+    var tokenFinderMaxLevel = LevelManager.tokenFinderMaxLevel
+    var jackpotLevel = 1
+    var jackpotMaxLevel = LevelManager.jackpotMaxLevel
+    var comboLevel = 1
+    var comboMaxLevel = LevelManager.comboMaxLevel
+    var procPowerLevel = 1
+    var procPowerMaxLevel = LevelManager.procPowerMaxLevel
     var autoMinerFortuneLevel = 1
     var autoMinerFortuneMaxLevel = LevelManager.autoMinerFortuneMaxLevel
     var autoMinerEfficiencyLevel = 1
@@ -343,7 +338,6 @@ class PlayerData {
     var hasReceivedJoinLoadout = false
     var hasSeenMineHelp = false
     var storageContents: MutableList<ItemStack> = mutableListOf()
-    var deathStorageContents: MutableList<ItemStack> = mutableListOf()
     var autoMinerStorageContents: MutableList<ItemStack> = mutableListOf()
     var trustedMinePlayers: MutableList<String> = mutableListOf()
     var lightningRodPlaced = false

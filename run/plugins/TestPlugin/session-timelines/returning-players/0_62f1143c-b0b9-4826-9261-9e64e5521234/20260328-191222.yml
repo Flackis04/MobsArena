@@ -1,0 +1,23 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+startedAt: '2026-03-28 19:12:22'
+endedAt: '2026-03-28 19:15:09'
+logoffSpot:
+  world: mine
+  x: -3.4009447666317
+  y: 65.0
+  z: -59.168141374381946
+  yaw: 93.8642
+  pitch: 22.222086
+timeline:
+- 2026-03-28 19:12:22 | Joined at mine @ 0.5, 65.0, -55.5
+- '2026-03-28 19:12:26 | Command: /rebirth'
+- '2026-03-28 19:13:31 | Command: /setdata Flackis04 rebirth 10'
+- '2026-03-28 19:13:32 | Command: /rebirth'
+- 2026-03-28 19:13:40 | Mine shield expired
+- '2026-03-28 19:13:44 | Command: /setdata Flackis04 rebirth 6'
+- '2026-03-28 19:13:47 | Command: /rebirth'
+- '2026-03-28 19:13:51 | Command: /setdata Flackis04 rebirth 8'
+- '2026-03-28 19:13:52 | Command: /rebirth'
+- '2026-03-28 19:14:00 | Command: /oreindex'
+- 2026-03-28 19:15:09 | Logged off at mine @ -3.4, 65.0, -59.2

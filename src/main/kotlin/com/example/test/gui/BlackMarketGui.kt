@@ -59,11 +59,11 @@ class BlackMarketGui : Listener {
     }
 
     private val templates = listOf(
-        ShopTemplate(ItemManager.dynamite.clone(), "Dynamite", 2..5, 3..8, 240L..400L, 85.0),
-        ShopTemplate(ItemManager.procBooster.clone(), "Power Up", 1..1, 1..2, 20_000L..30_000L, 60.0),
-        ShopTemplate(ItemManager.chargedDynamite.clone(), "Charged Dynamite", 1..1, 1..2, 700_000L..870_000L, 42.0),
-        ShopTemplate(ItemManager.upgradeSnowball.clone(), "Upgrade Snowball", 1..1, 1..1, 2_500_000L..2_500_000L, 28.0),
-        ShopTemplate(ItemManager.nuke.clone(), "Nuke", 1..1, 1..1, 4_000_000L..5_000_000L, 18.0)
+        ShopTemplate(ItemManager.dynamite.clone(), "Dynamite", 2..8, 3..8, 240L..400L, 85.0),
+        ShopTemplate(ItemManager.procBooster.clone(), "Power Up", 1..1, 1..2, 20_000L..40_000L, 60.0),
+        ShopTemplate(ItemManager.chargedDynamite.clone(), "Charged Dynamite", 2..5, 3..8, 70_000L..87_000L, 42.0),
+        ShopTemplate(ItemManager.lightningRodDeployable.clone(), "Storm Rod", 1..1, 1..1, 1_000_000_000L..2_500_000_000L, 28.0),
+        ShopTemplate(ItemManager.nuke.clone(), "Nuke", 1..3, 3..8, 4_000_000L..5_000_000L, 18.0)
     )
 
     private val marketStates = mutableMapOf<UUID, PlayerMarketState>()
@@ -196,11 +196,11 @@ class BlackMarketGui : Listener {
 
     private fun getScrollPrice(rarity: ScrollRarity, amount: Int): Long {
         val unitPrice = when (rarity) {
-            ScrollRarity.NORMAL -> 7_500L
-            ScrollRarity.RARE -> 20_000L
-            ScrollRarity.MYTHIC -> 75_000L
-            ScrollRarity.GOD -> 250_000L
-            ScrollRarity.SECRET -> 2_500_000L
+            ScrollRarity.NORMAL -> 80_000L
+            ScrollRarity.RARE -> 250_000L
+            ScrollRarity.MYTHIC -> 5_000_000L
+            ScrollRarity.GOD -> 40_000_000L
+            ScrollRarity.SECRET -> 250_000_000L
         }
         return unitPrice * amount.coerceAtLeast(1)
     }

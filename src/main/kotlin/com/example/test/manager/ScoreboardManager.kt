@@ -49,6 +49,7 @@ object ScoreboardManager {
         val data = DataStore.get(player.uniqueId)
         val blocks = TextUtil.formatNum(data.blocksMined)
         val balance = TextUtil.formatNum(data.balance)
+        val tokens = TextUtil.formatNum(data.tokens)
         val playtime = TextUtil.formatPlaytime(data.playtimeSeconds)
         val multiplier = String.format("%.2f", KitManager.getEffectiveSellMultiplier(player))
         player.playerListName(TextUtil.toComponent(getTabName(player, data)))
@@ -71,6 +72,7 @@ object ScoreboardManager {
         val lines = listOf(
             "",
             "${ItemManager.COIN_NAME_PLURAL}: &b$balance",
+            "&3Tokens: &b$tokens",
             "&2Multiplier: &b${multiplier}x",
             "&dRank: &b${data.rank}",
             "&aLevel: &b${player.level}",
@@ -151,10 +153,14 @@ object ScoreboardManager {
             "default" -> 1
             else -> 0
         }
-        val kitLevelOrder = data.rank.coerceAtLeast(0).coerceAtMost(99_999)
+        val progressionOrder = (
+            (data.ascension.coerceAtLeast(0) * 10_000) +
+                (data.rebirth.coerceAtLeast(0) * 100) +
+                data.rank.coerceAtLeast(0)
+            ).coerceAtMost(99_999)
         val nameOrder = player.name.lowercase(Locale.ROOT)
             .fold(0) { acc, char -> ((acc * 37) + char.code) % 1000 }
-        return (groupOrder * 100_000_000) + (kitLevelOrder * 1000) + nameOrder
+        return (groupOrder * 100_000_000) + (progressionOrder * 1000) + nameOrder
     }
 
     private fun getTabHeader(): Component {
@@ -205,11 +211,10 @@ object ScoreboardManager {
         NAME_TEAM_PREFIX + uuid.toString().replace("-", "").take(13)
 
     private fun buildNameDecoration(player: Player, data: PlayerData): NameDecoration {
-        val tierColor = TierManager.getTier(data.rank)?.color ?: "&f"
         val luckPermsPrefix = getLuckPermsPrefix(player)
         val luckPermsSuffix = getLuckPermsSuffix(player)
         return NameDecoration(
-            prefix = "$luckPermsPrefix$tierColor&l${formatDisplayedRank(data)} &f",
+            prefix = "$luckPermsPrefix${formatStyledRank(data)} &f",
             suffix = luckPermsSuffix
         )
     }
