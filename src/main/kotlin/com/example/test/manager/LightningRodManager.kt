@@ -56,6 +56,13 @@ object LightningRodManager : Listener {
         removeDisplay(player.uniqueId)
     }
 
+    fun clearPlacedRods(playerId: UUID) {
+        val data = DataStore.get(playerId)
+        data.lightningRodPlaced = false
+        data.lightningRodCount = 0
+        removeDisplay(playerId)
+    }
+
     fun hasActiveRod(playerId: UUID): Boolean = getPlacedRodCount(playerId) > 0
 
     fun getPlacedRodCount(playerId: UUID): Int {

@@ -8,11 +8,11 @@ import kotlin.math.pow
 private val upgradeGuiCommandCooldowns: MutableMap<java.util.UUID, Long> = mutableMapOf()
 private const val UPGRADE_GUI_COMMAND_COOLDOWN_MS = 1000L
 const val REBIRTH_MULTIPLIER_PER_REBIRTH = 0.25
-const val ASCENSION_MINE_WEIGHT_MULTIPLIER_PER_ASCENSION = 1.25
-const val ASCENSION_RANKUP_COST_MULTIPLIER_PER_ASCENSION = 1.1
-const val ASCENSION_XP_COST_MULTIPLIER_PER_ASCENSION = 1.08
+const val ASCENSION_MINE_WEIGHT_MULTIPLIER_PER_ASCENSION = 1.12
+const val ASCENSION_RANKUP_COST_MULTIPLIER_PER_ASCENSION = 1.5
+const val ASCENSION_XP_COST_MULTIPLIER_PER_ASCENSION = 1.35
 const val REBIRTH_PAYMENT_UNLOCK_SECONDS = 1L * 60L * 60L
-private const val MAX_REBIRTH = 26
+private const val MAX_REBIRTH = LevelManager.MAX_REBIRTH_LEVEL
 
 fun tryOpenPermUpgradeGui(player: Player): Boolean {
     val now = System.currentTimeMillis()
@@ -67,10 +67,11 @@ fun performAscension(player: Player): Boolean {
     data.ascension = nextAscension
     data.rebirth = 0
     resetPlayerData(data, isRebirth = true, preserveAutoMinerUpgrades = false)
+    resetScrollProgress(data)
     data.playtimeSecondsAtLastRebirth = data.playtimeSeconds
     data.paymentUnlockPlaytimeSeconds = data.playtimeSeconds + REBIRTH_PAYMENT_UNLOCK_SECONDS
     data.multiplier = getBasePlayerMultiplier(data)
-    applyResetToOnlinePlayer(player, data, true)
+    applyResetToOnlinePlayer(player, data, true, resetScrollProgress = true)
     SessionTimelineManager.record(player, "Ascended to ${formatAscensionLabel(nextAscension)}")
     TextUtil.showTitle(
         player,
@@ -80,7 +81,7 @@ fun performAscension(player: Player): Boolean {
         70,
         20
     )
-    player.sendMessage(TextUtil.colorize("&aAscended to &d${formatAscensionLabel(nextAscension)}&a."))
+    player.sendMessage(TextUtil.colorize("&aAscended to &d${formatAscensionLabel(nextAscension)}&a. &cYour scroll progress was reset."))
     player.playSound(player.location, "entity.player.levelup", 1f, 0.6f)
     ScoreboardManager.updateBoard(player)
     return true
@@ -99,7 +100,7 @@ fun checkRebirthRequirements(player: Player): Boolean {
     if (data.level < requiredLevel) missing += "Level $requiredLevel"
 
     if (missing.isNotEmpty()) {
-        player.sendMessage(TextUtil.colorize("&cYou do not meet the requirements to rebirth!"))
+        player.sendMessage(TextUtil.colorize("&cYou do not meet the requirements to rebirth: &f${missing.joinToString("&7, &f")}"))
         return false
     }
     return true
@@ -108,20 +109,28 @@ fun checkRebirthRequirements(player: Player): Boolean {
 fun checkAscensionRequirements(player: Player): Boolean {
     val data = DataStore.get(player.uniqueId)
     val missing = mutableListOf<String>()
+    val requiredLevel = LevelManager.getRequiredLevelForNextAscension(data.ascension)
     if (data.rebirth < MAX_REBIRTH) missing += "Rebirth Z"
     if (data.rank < LevelManager.getRankMaxLevel(data)) missing += "Max Rank"
+    if (data.level < requiredLevel) missing += "Level $requiredLevel"
 
     if (missing.isNotEmpty()) {
-        player.sendMessage(TextUtil.colorize("&cYou do not meet the requirements to ascend!"))
+        player.sendMessage(TextUtil.colorize("&cYou do not meet the requirements to ascend: &f${missing.joinToString("&7, &f")}"))
         return false
     }
     return true
 }
 
 fun formatDisplayedRank(data: PlayerData, rank: Int = data.rank): String {
-    val ascensionPrefix = if (data.ascension > 0) formatAscensionLabel(data.ascension) else ""
-    val rebirthTier = formatRebirthRequirement(data.rebirth)
-    return "$ascensionPrefix$rebirthTier$rank"
+    val parts = mutableListOf<String>()
+    if (data.ascension > 0) {
+        parts += formatAscensionLabel(data.ascension)
+    }
+    if (data.ascension > 0 || data.rebirth > 0) {
+        parts += formatDisplayIndexedLabel(data.rebirth, LevelManager.MAX_REBIRTH_LEVEL)
+    }
+    parts += formatDisplayIndexedLabel(rank, LevelManager.getRankMaxLevel(data))
+    return parts.joinToString("")
 }
 
 fun formatStyledRank(data: PlayerData, rank: Int = data.rank): String {
@@ -160,14 +169,21 @@ fun formatStyledRank(data: PlayerData, rank: Int = data.rank): String {
     if (data.ascension > 0) {
         parts += "$ascensionColor&l✦${formatAscensionLabel(data.ascension)}"
     }
-    parts += "$rebirthColor&l${formatRebirthRequirement(data.rebirth)}"
-    parts += "$rankColor&l$rank"
+    if (data.ascension > 0 || data.rebirth > 0) {
+        parts += "$rebirthColor&l${formatDisplayIndexedLabel(data.rebirth, LevelManager.MAX_REBIRTH_LEVEL)}"
+    }
+    parts += "$rankColor&l${formatDisplayIndexedLabel(rank, LevelManager.getRankMaxLevel(data))}"
 
     return "$frameColor&l⟦${parts.joinToString("$dividerColor&l•")}$frameColor&l⟧"
 }
 
 fun formatAscensionLabel(ascension: Int): String =
     if (ascension <= 0) "A" else spreadsheetLetters(ascension)
+
+private fun formatDisplayIndexedLabel(value: Int, maxValue: Int): String {
+    if (value <= 0) return "A"
+    return spreadsheetLetters(value)
+}
 
 private fun spreadsheetLetters(value: Int): String {
     var remaining = value.coerceAtLeast(1)
@@ -183,13 +199,16 @@ private fun spreadsheetLetters(value: Int): String {
 fun formatRebirthRequirement(rebirth: Int): String =
     if (rebirth < 0) rebirth.toString() else spreadsheetLetters(rebirth + 1)
 
+fun getRebirthStartingUpgradeLevel(rebirth: Int): Int =
+    (1 + (rebirth.coerceAtLeast(0) / 3)).coerceAtMost(10)
+
 fun getAscensionRankupCostMultiplier(data: PlayerData): Double =
     if (data.ascension <= 0) 1.0 else ASCENSION_RANKUP_COST_MULTIPLIER_PER_ASCENSION.pow(data.ascension.toDouble())
 
 fun getAscensionXpCostMultiplier(data: PlayerData): Double =
     if (data.ascension <= 0) 1.0 else ASCENSION_XP_COST_MULTIPLIER_PER_ASCENSION.pow(data.ascension.toDouble())
 
-fun getAscensionMineWeightMultiplier(data: PlayerData): Double =
+fun getAscensionMineRichnessMultiplier(data: PlayerData): Double =
     if (data.ascension <= 0) 1.0 else ASCENSION_MINE_WEIGHT_MULTIPLIER_PER_ASCENSION.pow(data.ascension.toDouble())
 
 fun sendPermissionMessage(sender: CommandSender) {
@@ -216,12 +235,14 @@ fun resetPlayerData(
     clearEarnedProgress: Boolean = false,
     preserveAutoMinerUpgrades: Boolean = isRebirth && !clearEarnedProgress
 ) {
-    val startingUpgradeLevel = if (isRebirth) 1 + data.rebirth else 1
+    val startingUpgradeLevel = if (isRebirth) getRebirthStartingUpgradeLevel(data.rebirth) else 1
     val autoMinerFortuneLevel = data.autoMinerFortuneLevel
     val autoMinerEfficiencyLevel = data.autoMinerEfficiencyLevel
     val autoMinerEnergyDrinkLevel = data.autoMinerEnergyDrinkLevel
     val autoMinerBackpackLevel = data.autoMinerBackpackLevel
     val autoMinerLuckLevel = data.autoMinerLuckLevel
+    val autoMinerPayoutLevel = data.autoMinerPayoutLevel
+    val swordLevel = data.swordLevel
     val multiBreakAddedLevels = (data.multiBreakMaxLevel - LevelManager.multiBreakMaxLevel).coerceAtLeast(0)
     val fortuneAddedLevels = (data.fortuneMaxLevel - LevelManager.fortuneMaxLevel).coerceAtLeast(0)
     val oreBoostAddedLevels = (data.oreBoostMaxLevel - LevelManager.oreBoostMaxLevel).coerceAtLeast(0)
@@ -234,6 +255,7 @@ fun resetPlayerData(
     val scrollFinderAddedLevels = (data.scrollFinderMaxLevel - LevelManager.scrollFinderMaxLevel).coerceAtLeast(0)
     val sellMultiplierAddedLevels = (data.sellMultiplierMaxLevel - LevelManager.sellMultiplierMaxLevel).coerceAtLeast(0)
     val tokenFinderAddedLevels = (data.tokenFinderMaxLevel - LevelManager.tokenFinderMaxLevel).coerceAtLeast(0)
+    val keyFinderAddedLevels = (data.keyFinderMaxLevel - LevelManager.keyFinderMaxLevel).coerceAtLeast(0)
     val jackpotAddedLevels = (data.jackpotMaxLevel - LevelManager.jackpotMaxLevel).coerceAtLeast(0)
     val comboAddedLevels = (data.comboMaxLevel - LevelManager.comboMaxLevel).coerceAtLeast(0)
     val procPowerAddedLevels = (data.procPowerMaxLevel - LevelManager.procPowerMaxLevel).coerceAtLeast(0)
@@ -254,6 +276,7 @@ fun resetPlayerData(
     data.backpackLevel = startingUpgradeLevel
     data.sellMultiplierLevel = startingUpgradeLevel
     data.tokenFinderLevel = startingUpgradeLevel
+    data.keyFinderLevel = startingUpgradeLevel
     data.jackpotLevel = startingUpgradeLevel
     data.comboLevel = startingUpgradeLevel
     data.procPowerLevel = startingUpgradeLevel
@@ -262,6 +285,8 @@ fun resetPlayerData(
     data.autoMinerEnergyDrinkLevel = if (preserveAutoMinerUpgrades) autoMinerEnergyDrinkLevel else 1
     data.autoMinerBackpackLevel = if (preserveAutoMinerUpgrades) autoMinerBackpackLevel else 1
     data.autoMinerLuckLevel = if (preserveAutoMinerUpgrades) autoMinerLuckLevel else 1
+    data.autoMinerPayoutLevel = if (preserveAutoMinerUpgrades) autoMinerPayoutLevel else 1
+    data.swordLevel = swordLevel
     data.multiBreakMaxLevel = (LevelManager.multiBreakMaxLevel + if (clearEarnedProgress) 0 else multiBreakAddedLevels).coerceAtMost(LevelManager.multiBreakMaxLevelWithScroll)
     data.fortuneMaxLevel = (LevelManager.fortuneMaxLevel + if (clearEarnedProgress) 0 else fortuneAddedLevels).coerceAtMost(LevelManager.fortuneMaxLevelWithScroll)
     data.oreBoostMaxLevel = (LevelManager.oreBoostMaxLevel + if (clearEarnedProgress) 0 else oreBoostAddedLevels).coerceAtMost(LevelManager.oreBoostMaxLevelWithScroll)
@@ -273,23 +298,34 @@ fun resetPlayerData(
     data.oreFrequencyMaxLevel = (LevelManager.oreFrequencyMaxLevel + if (clearEarnedProgress) 0 else oreFrequencyAddedLevels).coerceAtMost(LevelManager.oreFrequencyMaxLevelWithScroll)
     data.scrollFinderMaxLevel = (LevelManager.scrollFinderMaxLevel + if (clearEarnedProgress) 0 else scrollFinderAddedLevels).coerceAtMost(LevelManager.scrollFinderMaxLevelWithScroll)
     data.backpackMaxLevel = LevelManager.backpackMaxLevel
-    data.sellMultiplierMaxLevel = (LevelManager.sellMultiplierMaxLevel + if (clearEarnedProgress) 0 else sellMultiplierAddedLevels).coerceAtMost(LevelManager.sellMultiplierMaxLevel)
-    data.tokenFinderMaxLevel = (LevelManager.tokenFinderMaxLevel + if (clearEarnedProgress) 0 else tokenFinderAddedLevels).coerceAtMost(LevelManager.tokenFinderMaxLevel)
-    data.jackpotMaxLevel = (LevelManager.jackpotMaxLevel + if (clearEarnedProgress) 0 else jackpotAddedLevels).coerceAtMost(LevelManager.jackpotMaxLevel)
-    data.comboMaxLevel = (LevelManager.comboMaxLevel + if (clearEarnedProgress) 0 else comboAddedLevels).coerceAtMost(LevelManager.comboMaxLevel)
-    data.procPowerMaxLevel = (LevelManager.procPowerMaxLevel + if (clearEarnedProgress) 0 else procPowerAddedLevels).coerceAtMost(LevelManager.procPowerMaxLevel)
+    data.sellMultiplierMaxLevel = (LevelManager.sellMultiplierMaxLevel + if (clearEarnedProgress) 0 else sellMultiplierAddedLevels).coerceAtMost(LevelManager.sellMultiplierMaxLevelWithScroll)
+    data.tokenFinderMaxLevel = (LevelManager.tokenFinderMaxLevel + if (clearEarnedProgress) 0 else tokenFinderAddedLevels).coerceAtMost(LevelManager.tokenFinderMaxLevelWithScroll)
+    data.keyFinderMaxLevel = (LevelManager.keyFinderMaxLevel + if (clearEarnedProgress) 0 else keyFinderAddedLevels).coerceAtMost(LevelManager.keyFinderMaxLevelWithScroll)
+    data.jackpotMaxLevel = (LevelManager.jackpotMaxLevel + if (clearEarnedProgress) 0 else jackpotAddedLevels).coerceAtMost(LevelManager.jackpotMaxLevelWithScroll)
+    data.comboMaxLevel = (LevelManager.comboMaxLevel + if (clearEarnedProgress) 0 else comboAddedLevels).coerceAtMost(LevelManager.comboMaxLevelWithScroll)
+    data.procPowerMaxLevel = (LevelManager.procPowerMaxLevel + if (clearEarnedProgress) 0 else procPowerAddedLevels).coerceAtMost(LevelManager.procPowerMaxLevelWithScroll)
     data.autoMinerFortuneMaxLevel = LevelManager.autoMinerFortuneMaxLevel
     data.autoMinerEfficiencyMaxLevel = LevelManager.autoMinerEfficiencyMaxLevel
     data.autoMinerEnergyDrinkMaxLevel = LevelManager.autoMinerEnergyDrinkMaxLevel
     data.autoMinerBackpackMaxLevel = LevelManager.autoMinerBackpackMaxLevel
     data.autoMinerLuckMaxLevel = LevelManager.autoMinerLuckMaxLevel
+    data.autoMinerPayoutMaxLevel = LevelManager.autoMinerPayoutMaxLevel
+    data.swordMaxLevel = LevelManager.swordMaxLevel
     data.balance = 0
+    data.tokens = 0L
+    data.kills = 0L
+    data.deaths = 0L
     data.level = 0
+    if (!isRebirth) {
+        data.blocksMined = 0L
+    }
+    data.playtimeSeconds = 0L
     data.experienceBuffer = 0.0
     data.hasEnabledPvp = false
     if (!isRebirth) {
         data.playtimeSecondsAtLastRebirth = 0L
     }
+    data.paymentUnlockPlaytimeSeconds = 0L
     data.storageContents.clear()
     data.autoMinerStorageContents.clear()
     data.mineWeightBonusMultiplier = if (data.hasDonorRank) data.mineWeightBonusMultiplier else 1.0
@@ -327,6 +363,32 @@ fun resetPlayerData(
         data.mineCenterX = Int.MIN_VALUE
         data.mineCenterZ = Int.MIN_VALUE
         data.ascension = 0
+        data.newPlayer = null
+        data.hasTouched = false
+        data.hasBroken = false
+        data.hasClosed = false
+        data.hasSold = false
+        data.valuableBlocksBroken = 0
+        data.hasSeenBackpackSellHint = false
+        data.hasSeenUpgradeHint = false
+        data.tutorialActive = false
+        data.tutorialPendingUpgradeClose = false
+        data.hasSeenMineHelp = false
+        data.hasReceivedJoinLoadout = false
+        data.hasClaimedBattlepass.clear()
+        data.hasClaimedPlaytimeRewards.clear()
+        data.battlepassClaimedRewards.clear()
+        data.battlepassClaimedQuests.clear()
+        data.battlepassPoints = 0L
+        data.battlepassSwordKills = 0
+        data.battlepassAxeKills = 0
+        data.battlepassMaceKills = 0
+        data.battlepassTotalKills = 0
+        data.oreBoostActive = false
+        data.excavatorActive = false
+        data.lightningRodPlaced = false
+        data.lightningRodCount = 0
+        UpgradeToggleManager.resetToDefaults(data)
     }
     data.rebirth = 0
     data.animationsEnabled = true
@@ -336,10 +398,54 @@ fun resetPlayerData(
     data.multiplier = getBasePlayerMultiplier(data)
 }
 
+private fun resetScrollProgress(data: PlayerData) {
+    data.upgradeScrollBonuses.clear()
+    data.multiBreakScrollBonus = 0.0
+    data.multiBreakMaxLevel = LevelManager.multiBreakMaxLevel
+    data.fortuneMaxLevel = LevelManager.fortuneMaxLevel
+    data.oreBoostMaxLevel = LevelManager.oreBoostMaxLevel
+    data.excavatorMaxLevel = LevelManager.excavatorMaxLevel
+    data.lightningMaxLevel = LevelManager.lightningMaxLevel
+    data.virtualJackhammerMaxLevel = LevelManager.virtualJackhammerMaxLevel
+    data.excavatorEfficiencyMaxLevel = LevelManager.excavatorEfficiencyMaxLevel
+    data.xpGainMaxLevel = LevelManager.xpGainMaxLevel
+    data.oreFrequencyMaxLevel = LevelManager.oreFrequencyMaxLevel
+    data.scrollFinderMaxLevel = LevelManager.scrollFinderMaxLevel
+    data.sellMultiplierMaxLevel = LevelManager.sellMultiplierMaxLevel
+    data.tokenFinderMaxLevel = LevelManager.tokenFinderMaxLevel
+    data.keyFinderMaxLevel = LevelManager.keyFinderMaxLevel
+    data.jackpotMaxLevel = LevelManager.jackpotMaxLevel
+    data.comboMaxLevel = LevelManager.comboMaxLevel
+    data.procPowerMaxLevel = LevelManager.procPowerMaxLevel
+    data.multiBreakLevel = data.multiBreakLevel.coerceAtMost(data.multiBreakMaxLevel)
+    data.fortuneLevel = data.fortuneLevel.coerceAtMost(data.fortuneMaxLevel)
+    data.oreBoostLevel = data.oreBoostLevel.coerceAtMost(data.oreBoostMaxLevel)
+    data.excavatorLevel = data.excavatorLevel.coerceAtMost(data.excavatorMaxLevel)
+    data.lightningLevel = data.lightningLevel.coerceAtMost(data.lightningMaxLevel)
+    data.virtualJackhammerLevel = data.virtualJackhammerLevel.coerceAtMost(data.virtualJackhammerMaxLevel)
+    data.excavatorEfficiencyLevel = data.excavatorEfficiencyLevel.coerceAtMost(data.excavatorEfficiencyMaxLevel)
+    data.xpGainLevel = data.xpGainLevel.coerceAtMost(data.xpGainMaxLevel)
+    data.oreFrequencyLevel = data.oreFrequencyLevel.coerceAtMost(data.oreFrequencyMaxLevel)
+    data.scrollFinderLevel = data.scrollFinderLevel.coerceAtMost(data.scrollFinderMaxLevel)
+    data.sellMultiplierLevel = data.sellMultiplierLevel.coerceAtMost(data.sellMultiplierMaxLevel)
+    data.tokenFinderLevel = data.tokenFinderLevel.coerceAtMost(data.tokenFinderMaxLevel)
+    data.keyFinderLevel = data.keyFinderLevel.coerceAtMost(data.keyFinderMaxLevel)
+    data.jackpotLevel = data.jackpotLevel.coerceAtMost(data.jackpotMaxLevel)
+    data.comboLevel = data.comboLevel.coerceAtMost(data.comboMaxLevel)
+    data.procPowerLevel = data.procPowerLevel.coerceAtMost(data.procPowerMaxLevel)
+}
+
 private fun getBasePlayerMultiplier(data: PlayerData): Double =
     1.0 + (data.rebirth * REBIRTH_MULTIPLIER_PER_REBIRTH) + data.discordMultiplierBonus + data.donorRankMultiplier
 
-fun applyResetToOnlinePlayer(player: Player, data: PlayerData, isRebirth: Boolean = false, clearEarnedProgress: Boolean = false) {
+fun applyResetToOnlinePlayer(
+    player: Player,
+    data: PlayerData,
+    isRebirth: Boolean = false,
+    clearEarnedProgress: Boolean = false,
+    resetScrollProgress: Boolean = false
+) {
+    KitManager.prepareForProgressReset(player)
     player.totalExperience = 0
     player.level = 0
     player.exp = 0f
@@ -352,7 +458,8 @@ fun applyResetToOnlinePlayer(player: Player, data: PlayerData, isRebirth: Boolea
     ScoreboardManager.updateBoard(player)
     player.sendMessage(
         TextUtil.colorize(
-            if (isRebirth) "&dYour inventory, upgrades, rank, level, storage, and coins have been reset."
+            if (isRebirth && resetScrollProgress) "&dYour inventory, upgrades, rank, level, storage, coins, and scroll progress have been reset."
+            else if (isRebirth) "&dYour inventory, upgrades, rank, level, storage, and coins have been reset."
             else if (clearEarnedProgress) "&cYour stats, money, upgrades, rebirths, masteries, and scroll progress have been reset."
             else "&cYour money and upgrades have been reset."
         )

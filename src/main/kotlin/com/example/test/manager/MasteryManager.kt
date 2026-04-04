@@ -14,7 +14,7 @@ import kotlin.math.roundToLong
 
 object MasteryManager {
     private const val MAX_MASTERY_LEVEL = 7
-    private const val ACTIVATION_CHANCE_BONUS_PER_TIER = 0.005
+    private const val ACTIVATION_CHANCE_BONUS_PER_TIER = 0.003
     private const val VALUABLE_SELL_BONUS_PER_TIER = 0.15
     private const val VALUABLE_MASTERY_BASE_MULTIPLIER = 5.0
     private const val VALUABLE_MASTERY_TIER_EXPONENT = 3.0
@@ -257,24 +257,24 @@ object MasteryManager {
     private fun getRewardDescription(key: String, masteryTier: Int): String =
         when (key) {
             "lightning" -> when (masteryTier) {
-                1, 3, 5 -> "+0.5% Lightning activation chance"
+                1, 3, 5 -> "+0.3% Lightning activation chance"
                 2, 4, 6 -> "+1 extra Lightning tier jump"
                 7 -> "Lightning upgrades a 5x5 area instead of 3x3"
-                else -> "+0.5% Lightning activation chance"
+                else -> "+0.3% Lightning activation chance"
             }
             "virtualJackhammer" -> when (masteryTier) {
                 7 -> "Jackhammer clears 2 layers instead of 1"
-                else -> "+0.5% activation chance"
+                else -> "+0.3% activation chance"
             }
-            else -> "+0.5% activation chance"
+            else -> "+0.3% activation chance"
         }
 
     private fun baseRequirement(key: String): Long =
         when (key) {
-            "oreBoost" -> 500L
-            "excavator" -> 500L
-            "lightning" -> 250L
-            "virtualJackhammer" -> 100L
+            "oreBoost" -> 750L
+            "excavator" -> 750L
+            "lightning" -> 400L
+            "virtualJackhammer" -> 175L
             else -> 2_500L
         }
 

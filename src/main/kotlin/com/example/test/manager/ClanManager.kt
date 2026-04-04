@@ -18,15 +18,30 @@ object ClanManager {
     private const val CLAN_LEVEL_MINE_WEIGHT_BONUS = 0.02
     private val clanLevelCosts = listOf(
         100L,
-        175L,
-        300L,
-        475L,
-        700L,
-        1_000L,
-        1_375L,
-        1_850L,
-        2_450L,
-        3_200L
+        180L,
+        320L,
+        520L,
+        800L,
+        1_200L,
+        1_800L,
+        2_600L,
+        3_800L,
+        5_500L,
+        8_000L,
+        12_000L,
+        18_000L,
+        27_000L,
+        40_000L,
+        60_000L,
+        90_000L,
+        135_000L,
+        200_000L,
+        300_000L,
+        450_000L,
+        700_000L,
+        1_050_000L,
+        1_600_000L,
+        2_500_000L
     )
 
     private lateinit var file: File
@@ -60,6 +75,14 @@ object ClanManager {
             config.set("$basePath.blocksContributed", clan.blocksContributed)
             config.set("$basePath.blocksTowardsNextPoint", clan.blocksTowardsNextPoint)
         }
+        config.save(file)
+    }
+
+    fun resetAll() {
+        clans.clear()
+        memberIndex.clear()
+        pendingInvites.clear()
+        config.set("clans", null)
         config.save(file)
     }
 
@@ -335,7 +358,7 @@ object ClanManager {
             "&7Points From Mining: &f1 &7per ${TextUtil.formatNum(BLOCKS_PER_CLAN_POINT)} blocks",
             "&7Clan Size: &f${clan.upgrades["size"] ?: 0}",
             "&7Fortune Aura: &f${clan.upgrades["fortune"] ?: 0}",
-            "&7Level Bonus: &f+${String.format("%.0f", getLevelFortuneBonus(clan) * 100)}% fortune &7and &f+${String.format("%.0f", getLevelMineWeightBonus(clan) * 100)}% mine weight",
+            "&7Level Bonus: &f+${String.format("%.0f", getLevelFortuneBonus(clan) * 100)}% fortune &7and &f+${String.format("%.0f", getLevelMineWeightBonus(clan) * 100)}% mine richness",
             "&7Members: &f${memberNames.joinToString(", ")}"
         )
     }

@@ -91,7 +91,7 @@ class RankUpGui : Listener {
         gui.setItem(22, GuiItem(createMainActionItem(player, activeView.mode)) {
             if (!GuiClickDebounce.tryAcquire(player)) return@GuiItem
             when (activeView.mode) {
-                ViewMode.RANKUP -> handleRankupClick(player, activeView)
+                ViewMode.RANKUP -> handleRankupClick(player, activeView, buyMax = it.isRightClick)
                 ViewMode.REBIRTH -> handleRebirthClick(player, activeView)
                 ViewMode.ASCEND -> handleAscendClick(player, activeView)
             }
@@ -100,40 +100,66 @@ class RankUpGui : Listener {
         gui.setItem(32, GuiItem(createNextGoalItem(player, activeView.mode)))
     }
 
-    private fun handleRankupClick(player: Player, activeView: ActiveView) {
+    private fun handleRankupClick(player: Player, activeView: ActiveView, buyMax: Boolean) {
         val data = DataStore.get(player.uniqueId)
         if (data.rank >= LevelManager.getRankMaxLevel(data)) {
             open(player, ViewMode.REBIRTH)
             return
         }
 
-        val cost = getRankupCost(data)
-        if (data.balance < cost) {
+        val firstCost = getRankupCost(data)
+        if (data.balance < firstCost) {
             player.sendMessage(TextUtil.colorize("&cYou can't afford this rankup."))
             player.playSound(player.location, "block.note_block.bass", 1f, 1f)
             refreshGui(player)
             return
         }
 
-        data.balance -= cost
-        data.rank += 1
-        data.multiplier += KitManager.KIT_SET_MULTIPLIER_PER_TIER
+        var ranksPurchased = 0
+        var totalSpent = 0L
+        var totalDynamite = 0
+
+        while (data.rank < LevelManager.getRankMaxLevel(data)) {
+            val cost = getRankupCost(data)
+            if (data.balance < cost) break
+
+            data.balance -= cost
+            data.rank += 1
+            data.multiplier += KitManager.KIT_SET_MULTIPLIER_PER_TIER
+            totalSpent += cost
+            ranksPurchased += 1
+
+            val dynamiteReward = getRankupDynamiteReward(data.rank)
+            if (dynamiteReward > 0) {
+                KitManager.giveDynamite(player, dynamiteReward)
+                totalDynamite += dynamiteReward
+            }
+
+            if (!buyMax) break
+        }
+
         activeView.rebirthConfirmationArmed = false
         activeView.ascensionConfirmationArmed = false
-        KitManager.equipHead(player, data.rank)
-        KitManager.equipArmor(player, data.rank)
-        val dynamiteReward = getRankupDynamiteReward(data.rank)
-        if (dynamiteReward > 0) {
-            KitManager.giveDynamite(player, dynamiteReward)
-        }
         SessionTimelineManager.record(
             player,
-            "Ranked up to ${formatDisplayedRank(data, data.rank)} for ${TextUtil.formatNum(cost)} ${ItemManager.COIN_NAME_PLURAL}"
+            if (ranksPurchased > 1) {
+                "Ranked up ${ranksPurchased} times to ${formatDisplayedRank(data, data.rank)} for ${TextUtil.formatNum(totalSpent)} ${ItemManager.COIN_NAME_PLURAL}"
+            } else {
+                "Ranked up to ${formatDisplayedRank(data, data.rank)} for ${TextUtil.formatNum(totalSpent)} ${ItemManager.COIN_NAME_PLURAL}"
+            }
         )
 
-        player.sendMessage(TextUtil.colorize("&aRanked up to &bRank ${formatDisplayedRank(data, data.rank)}&a."))
-        if (dynamiteReward > 0) {
-            player.sendMessage(TextUtil.colorize("&aRankup reward: &cx$dynamiteReward Dynamite&a."))
+        if (ranksPurchased > 1) {
+            player.sendMessage(
+                TextUtil.colorize(
+                    "&aRanked up &f$ranksPurchased &atimes to &bRank ${formatDisplayedRank(data, data.rank)}&a for &6${TextUtil.formatNum(totalSpent)} coins&a."
+                )
+            )
+        } else {
+            player.sendMessage(TextUtil.colorize("&aRanked up to &bRank ${formatDisplayedRank(data, data.rank)}&a."))
+        }
+        if (totalDynamite > 0) {
+            player.sendMessage(TextUtil.colorize("&aRankup reward: &cx$totalDynamite Dynamite&a."))
         }
         player.playSound(player.location, "entity.player.levelup", 1f, 1f)
         ScoreboardManager.updateBoard(player)
@@ -226,7 +252,8 @@ class RankUpGui : Listener {
                         TextUtil.toComponent("&8• ${affordColor}Cost: &b${TextUtil.formatNum(cost)} ${ItemManager.COIN_NAME_PLURAL}").decoration(TextDecoration.ITALIC, false),
                         TextUtil.toComponent("&8• &7Reward: &b+${TextUtil.formatNum(KitManager.KIT_SET_MULTIPLIER_PER_TIER)}x &7multiplier").decoration(TextDecoration.ITALIC, false),
                         TextUtil.toComponent("&8• &7Bonus: &cx$dynamiteReward &7dynamite").decoration(TextDecoration.ITALIC, false),
-                        TextUtil.toComponent(if (data.balance >= cost) "&a&lClick to rank up" else "&c&lNot enough coins").decoration(TextDecoration.ITALIC, false)
+                        TextUtil.toComponent(if (data.balance >= cost) "&a&lLeft-click: rank up" else "&c&lNot enough coins").decoration(TextDecoration.ITALIC, false),
+                        TextUtil.toComponent(if (data.balance >= cost) "&a&lRight-click: rank up max" else "&8Need more coins").decoration(TextDecoration.ITALIC, false)
                     )
                 )
             }
@@ -236,7 +263,7 @@ class RankUpGui : Listener {
     private fun createRebirthItem(player: Player): ItemStack {
         val data = DataStore.get(player.uniqueId)
         val requiredLevel = LevelManager.getRequiredLevelForNextRebirth(data.rebirth)
-        val nextStartingUpgradeLevel = 1 + (data.rebirth + 1)
+        val nextStartingUpgradeLevel = getRebirthStartingUpgradeLevel(data.rebirth + 1)
         val canRebirth = checkRebirthRequirementsSilently(data)
         val confirmRebirth = activeViews[player]?.rebirthConfirmationArmed == true
 
@@ -250,7 +277,7 @@ class RankUpGui : Listener {
                     TextUtil.toComponent("&8• &7Need: &b${formatDisplayedRank(data, LevelManager.getRankMaxLevel(data))}&7 and &aL$requiredLevel").decoration(TextDecoration.ITALIC, false),
                     TextUtil.toComponent("&8• &7Perk: &d+${TextUtil.formatNum(REBIRTH_MULTIPLIER_PER_REBIRTH)}x &7permanent multiplier").decoration(TextDecoration.ITALIC, false),
                     TextUtil.toComponent("&8• &7Perk: &bUpgrades start at level $nextStartingUpgradeLevel").decoration(TextDecoration.ITALIC, false),
-                    TextUtil.toComponent("&8• &cResets rank, level, coins, inventory, storage, and non-permanent upgrades").decoration(TextDecoration.ITALIC, false)
+                    TextUtil.toComponent("&8• &cResets rank, level, coins, inventory, storage, and rankup upgrades").decoration(TextDecoration.ITALIC, false)
                 )
                 if (data.rebirth == 0) {
                     lore += TextUtil.toComponent("&8• &6First rebirth unlocks autominer, jackhammer, and lightning").decoration(TextDecoration.ITALIC, false)
@@ -269,6 +296,7 @@ class RankUpGui : Listener {
 
     private fun createAscendItem(player: Player): ItemStack {
         val data = DataStore.get(player.uniqueId)
+        val requiredLevel = LevelManager.getRequiredLevelForNextAscension(data.ascension)
         val confirmAscension = activeViews[player]?.ascensionConfirmationArmed == true
         val canAscend = checkAscensionRequirementsSilently(data)
         return ItemStack(Material.END_CRYSTAL).apply {
@@ -276,11 +304,11 @@ class RankUpGui : Listener {
                 meta.displayName(TextUtil.toComponent(if (confirmAscension) "&c&lConfirm Ascension" else "&5&lAscension").decoration(TextDecoration.ITALIC, false))
                 meta.lore(
                     listOf(
-                        TextUtil.toComponent("&8• &7Need: &bRebirth Z &7and &b${formatDisplayedRank(data, LevelManager.getRankMaxLevel(data))}").decoration(TextDecoration.ITALIC, false),
+                        TextUtil.toComponent("&8• &7Need: &bRebirth Z&7, &b${formatDisplayedRank(data, LevelManager.getRankMaxLevel(data))}&7, and &aL$requiredLevel").decoration(TextDecoration.ITALIC, false),
                         TextUtil.toComponent("&8• &7Perk: &dBase tag &7${if (data.ascension > 0) "${formatAscensionLabel(data.ascension)}1" else "None"} &8-> &d${formatAscensionLabel(data.ascension + 1)}1").decoration(TextDecoration.ITALIC, false),
-                        TextUtil.toComponent("&8• &7Perk: &b${String.format("%.2f", ASCENSION_MINE_WEIGHT_MULTIPLIER_PER_ASCENSION)}x &7mine weight per ascension").decoration(TextDecoration.ITALIC, false),
-                        TextUtil.toComponent("&8• &7Tradeoff: &cRankup costs and XP pacing scale up each ascension").decoration(TextDecoration.ITALIC, false),
-                        TextUtil.toComponent("&8• &cResets rank, rebirth, level, coins, inventory, storage, non-permanent upgrades, and autominer").decoration(TextDecoration.ITALIC, false),
+                        TextUtil.toComponent("&8• &7Perk: &b${String.format("%.2f", ASCENSION_MINE_WEIGHT_MULTIPLIER_PER_ASCENSION)}x &7mine richness per ascension").decoration(TextDecoration.ITALIC, false),
+                        TextUtil.toComponent("&8• &7Tradeoff: &cRankup, upgrade, and XP costs scale up each ascension").decoration(TextDecoration.ITALIC, false),
+                        TextUtil.toComponent("&8• &cResets rank, rebirth, level, coins, inventory, storage, rankup upgrades, autominer, and scroll progress").decoration(TextDecoration.ITALIC, false),
                         TextUtil.toComponent(
                             when {
                                 confirmAscension -> "&c&lClick again to confirm"
@@ -328,7 +356,8 @@ class RankUpGui : Listener {
                         )
                         ViewMode.ASCEND -> listOf(
                             TextUtil.toComponent("&8• &7Reach: &bRebirth Z").decoration(TextDecoration.ITALIC, false),
-                            TextUtil.toComponent("&8• &7Reach: &b${formatDisplayedRank(data, LevelManager.getRankMaxLevel(data))}").decoration(TextDecoration.ITALIC, false)
+                            TextUtil.toComponent("&8• &7Reach: &b${formatDisplayedRank(data, LevelManager.getRankMaxLevel(data))}").decoration(TextDecoration.ITALIC, false),
+                            TextUtil.toComponent("&8• &7Level: &a${LevelManager.getRequiredLevelForNextAscension(data.ascension)}").decoration(TextDecoration.ITALIC, false)
                         )
                     }
                 )
@@ -346,14 +375,16 @@ class RankUpGui : Listener {
     private fun getRankupDynamiteReward(rank: Int): Int = (rank / 4).coerceAtLeast(0)
 
     private fun checkRebirthRequirementsSilently(data: PlayerData): Boolean {
-        if (data.rebirth >= 26) return false
+        if (data.rebirth >= LevelManager.MAX_REBIRTH_LEVEL) return false
         val requiredLevel = LevelManager.getRequiredLevelForNextRebirth(data.rebirth)
         return data.rank >= LevelManager.getRankMaxLevel(data) &&
             data.level >= requiredLevel
     }
 
     private fun checkAscensionRequirementsSilently(data: PlayerData): Boolean =
-        data.rebirth >= 26 && data.rank >= LevelManager.getRankMaxLevel(data)
+        data.rebirth >= LevelManager.MAX_REBIRTH_LEVEL &&
+            data.rank >= LevelManager.getRankMaxLevel(data) &&
+            data.level >= LevelManager.getRequiredLevelForNextAscension(data.ascension)
 
     private data class ActiveView(
         val gui: Gui,

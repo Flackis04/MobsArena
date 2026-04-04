@@ -40,9 +40,9 @@ class AutoMinerBackpackGui {
                     item.type
                 }
                 val display = if (item.type == Material.AIR || item.amount <= 0) {
-                    createEmptyValuableItem(index)
+                    createEmptyValuableItem(player, index)
                 } else {
-                    createDisplayItem(item)
+                    createDisplayItem(player, item)
                 }
                 gui.setItem(slot, GuiItem(display) { event ->
                     if (!GuiClickDebounce.tryAcquire(player)) return@GuiItem
@@ -89,12 +89,20 @@ class AutoMinerBackpackGui {
                 } else {
                     SessionTimelineManager.record(
                         player,
-                        "Collected ${TextUtil.formatNum(result.totalItems)} items from autominer backpack"
+                        "Collected ${TextUtil.formatNum(result.totalItems)} items from autominer backpack (${result.payoutMultiplier}x payout)"
                     )
                     player.playSound(player.location, "entity.experience_orb.pickup", 1f, 1f)
+                    TextUtil.showTitle(
+                        player,
+                        if (result.payoutLucky) "&6Lucky Payout!" else "&7No Bonus",
+                        if (result.payoutLucky) "&fAuto Miner payout doubled to &62x" else "&7Auto Miner payout stayed at &f1x",
+                        10,
+                        35,
+                        10
+                    )
                     player.sendMessage(
                         TextUtil.colorize(
-                            "&aCollected &7x${TextUtil.formatNum(result.totalItems)} items &ainto your backpack."
+                            "&aCollected &7x${TextUtil.formatNum(result.totalItems)} items &ainto your backpack${if (result.payoutLucky) " &6(2x Lucky Payout)" else ""}."
                         )
                     )
                 }
@@ -103,11 +111,11 @@ class AutoMinerBackpackGui {
             })
         }
 
-        private fun createDisplayItem(item: ItemStack): ItemStack {
-            val template = MineManager.createValuableItem(item.type, 1)
+        private fun createDisplayItem(player: Player, item: ItemStack): ItemStack {
+            val discovered = DataStore.get(player.uniqueId).getCollectedAmount(item.type) > 0L
             return ItemStack(item.type, item.amount.coerceAtLeast(1)).apply {
                 editMeta { meta ->
-                    meta.displayName(template.itemMeta.displayName())
+                    meta.displayName(MineManager.getValuableDisplayName(item.type, discovered))
                     meta.lore(
                         listOf(
                             TextUtil.toComponent("&7Quantity: &f${TextUtil.formatNum(item.amount.toLong())}").decoration(TextDecoration.ITALIC, false),
@@ -119,18 +127,24 @@ class AutoMinerBackpackGui {
             }
         }
 
-        private fun createEmptyValuableItem(index: Int): ItemStack {
+        private fun createEmptyValuableItem(player: Player, index: Int): ItemStack {
             val material = MineManager.valuableDrops[index]
-            val template = MineManager.createValuableItem(material, 1)
-            return ItemStack(Material.STONE_BUTTON).apply {
+            val discovered = DataStore.get(player.uniqueId).getCollectedAmount(material) > 0L
+            return ItemStack(if (discovered) Material.STONE_BUTTON else Material.POLISHED_BLACKSTONE_BUTTON).apply {
                 editMeta { meta ->
-                    meta.displayName(template.itemMeta.displayName())
+                    meta.displayName(MineManager.getValuableDisplayName(material, discovered))
                     meta.lore(
-                        listOf(
-                            TextUtil.toComponent("&7Quantity: &f0").decoration(TextDecoration.ITALIC, false),
-                            TextUtil.toComponent("&7Waiting for your autominer...").decoration(TextDecoration.ITALIC, false),
-                            TextUtil.toComponent("&7Shift-left-click: &dView mastery").decoration(TextDecoration.ITALIC, false)
-                        )
+                        if (discovered) {
+                            listOf(
+                                TextUtil.toComponent("&7Quantity: &f0").decoration(TextDecoration.ITALIC, false),
+                                TextUtil.toComponent("&7Waiting for your autominer...").decoration(TextDecoration.ITALIC, false),
+                                TextUtil.toComponent("&7Shift-left-click: &dView mastery").decoration(TextDecoration.ITALIC, false)
+                            )
+                        } else {
+                            listOf(
+                                TextUtil.toComponent("&7Not discovered yet").decoration(TextDecoration.ITALIC, false)
+                            )
+                        }
                     )
                 }
             }

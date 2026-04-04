@@ -92,7 +92,7 @@ class ClanGui {
                 "&7Spend points on clan levels",
                 "&7and permanent clan upgrades.",
                 "&7Clan levels boost fortune",
-                "&7and net mine weight."
+                "&7and mine richness."
             )
         )))
         gui.setItem(31, GuiItem(createInfoItem(Material.PAPER, "&e&lClan Commands", ClanManager.buildHelp())))
@@ -161,7 +161,7 @@ class ClanGui {
                 "&7Current Level: &f${clan.level}",
                 if (nextCost != null) "&7Cost: &f${TextUtil.formatNum(nextCost)} clan points" else "&7Cost: &aMaxed",
                 "&7Level Bonus: &f+${String.format("%.0f", ClanManager.getLevelFortuneBonus(clan) * 100)}% fortune",
-                "&7             &f+${String.format("%.0f", ClanManager.getLevelMineWeightBonus(clan) * 100)}% mine weight",
+                "&7             &f+${String.format("%.0f", ClanManager.getLevelMineWeightBonus(clan) * 100)}% mine richness",
                 "",
                 if (owner) "&7Left click: &aBuy 1 level" else "&7Only the clan owner can level the clan.",
                 if (owner) "&7Shift click: &aBuy max levels" else "&7Use /clan to review clan status."
@@ -204,11 +204,11 @@ class ClanGui {
             Material.BEACON,
             "&b&lClan Bonuses",
             listOf(
-                "&7Mine Weight: &f${String.format("%.2f", ClanManager.getMineWeightMultiplier(player.uniqueId))}x",
+                "&7Mine Richness: &f${String.format("%.2f", ClanManager.getMineWeightMultiplier(player.uniqueId))}x",
                 "&7Fortune: &f${String.format("%.2f", ClanManager.getPlayerFortuneMultiplier(player.uniqueId))}x",
                 "",
                 "&7From Clan Level: &f+${String.format("%.0f", ClanManager.getLevelFortuneBonus(clan) * 100)}% fortune",
-                "&7                 &f+${String.format("%.0f", ClanManager.getLevelMineWeightBonus(clan) * 100)}% mine weight",
+                "&7                 &f+${String.format("%.0f", ClanManager.getLevelMineWeightBonus(clan) * 100)}% mine richness",
                 "&7From Fortune Aura: &f+${String.format("%.0f", ClanManager.getUpgradeLevel(clan, "fortune") * 5.0)}% fortune",
                 "&7From Size Upgrade: &f+${ClanManager.getUpgradeLevel(clan, "size") * 3} slots"
             )

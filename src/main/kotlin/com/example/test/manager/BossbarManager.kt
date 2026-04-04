@@ -247,7 +247,7 @@ object BossbarManager {
             return "&dNext Event in &a${TextUtil.formatNum(blocksMinedGlobally)}/${TextUtil.formatNum(requirementBlocks)} &dBlocks Mined"
         return when (type) {
             "GoldRush" -> "$rarityPrefix &eGold Rush Event &7(&d${multiplier}x sell)"
-            else ->  "$rarityPrefix &bRare Ores Event (${weightMultiplier}x valuable frequency)"
+            else ->  "$rarityPrefix &bRare Ores Event (${weightMultiplier}x mine richness)"
         }
     }
 

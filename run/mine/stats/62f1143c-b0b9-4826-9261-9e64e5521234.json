@@ -1,22 +1,5 @@
 {
   "stats": {
-    "minecraft:picked_up": {
-      "minecraft:amethyst_block": 8,
-      "minecraft:diamond": 1,
-      "minecraft:red_candle": 33,
-      "minecraft:cobbled_deepslate": 23
-    },
-    "minecraft:dropped": {
-      "minecraft:mace": 1,
-      "minecraft:wooden_axe": 1,
-      "minecraft:wooden_sword": 1,
-      "minecraft:bread": 3,
-      "minecraft:wind_charge": 24
-    },
-    "minecraft:mined": {
-      "minecraft:deepslate": 55,
-      "minecraft:deepslate_diamond_ore": 2
-    },
     "minecraft:used": {
       "minecraft:sculk_shrieker": 3,
       "minecraft:sculk_catalyst": 11,
@@ -29,24 +12,41 @@
       "minecraft:raw_gold_block": 2,
       "minecraft:bedrock": 14
     },
+    "minecraft:mined": {
+      "minecraft:deepslate": 55,
+      "minecraft:deepslate_diamond_ore": 2
+    },
     "minecraft:custom": {
-      "minecraft:time_since_rest": 187139,
-      "minecraft:walk_one_cm": 334730,
-      "minecraft:leave_game": 268,
+      "minecraft:time_since_rest": 196102,
+      "minecraft:walk_one_cm": 343476,
+      "minecraft:leave_game": 273,
       "minecraft:damage_taken": 1279,
-      "minecraft:play_time": 1526143,
-      "minecraft:jump": 1710,
-      "minecraft:time_since_death": 187139,
+      "minecraft:play_time": 1535106,
+      "minecraft:jump": 1770,
+      "minecraft:time_since_death": 196102,
       "minecraft:drop": 5,
       "minecraft:open_barrel": 32,
-      "minecraft:sprint_one_cm": 802306,
+      "minecraft:sprint_one_cm": 815300,
       "minecraft:open_chest": 3,
-      "minecraft:fall_one_cm": 253913,
-      "minecraft:total_world_time": 1526143,
-      "minecraft:fly_one_cm": 822192,
-      "minecraft:crouch_one_cm": 14974,
-      "minecraft:sneak_time": 7406,
+      "minecraft:fall_one_cm": 265221,
+      "minecraft:total_world_time": 1535106,
+      "minecraft:fly_one_cm": 904639,
+      "minecraft:crouch_one_cm": 15048,
+      "minecraft:sneak_time": 7519,
       "minecraft:deaths": 15
+    },
+    "minecraft:dropped": {
+      "minecraft:mace": 1,
+      "minecraft:wooden_axe": 1,
+      "minecraft:wooden_sword": 1,
+      "minecraft:bread": 3,
+      "minecraft:wind_charge": 24
+    },
+    "minecraft:picked_up": {
+      "minecraft:amethyst_block": 8,
+      "minecraft:diamond": 1,
+      "minecraft:red_candle": 33,
+      "minecraft:cobbled_deepslate": 23
     }
   },
   "DataVersion": 4671

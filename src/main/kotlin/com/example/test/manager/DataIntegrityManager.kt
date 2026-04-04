@@ -56,9 +56,18 @@ object DataIntegrityManager {
             changed = true
         }
 
-        val startingUpgradeLevel = (1 + data.rebirth).coerceAtLeast(1)
+        val startingUpgradeLevel = getRebirthStartingUpgradeLevel(data.rebirth)
         changed = ensureStartingUpgradeFloor(data, startingUpgradeLevel) || changed
         changed = MasteryManager.reconcile(data) || changed
+
+        if (!data.oreBoostEnabled && data.oreBoostActive) {
+            data.oreBoostActive = false
+            changed = true
+        }
+        if (!data.excavatorEnabled && data.excavatorActive) {
+            data.excavatorActive = false
+            changed = true
+        }
 
         val expectedMultiplier = getExpectedTotalMultiplier(data)
         if (kotlin.math.abs(data.multiplier - expectedMultiplier) > 0.0001) {
@@ -143,6 +152,12 @@ object DataIntegrityManager {
         val correctedTokenFinder = correct(data.tokenFinderLevel, data.tokenFinderMaxLevel)
         if (data.tokenFinderLevel != correctedTokenFinder) {
             data.tokenFinderLevel = correctedTokenFinder
+            changed = true
+        }
+
+        val correctedKeyFinder = correct(data.keyFinderLevel, data.keyFinderMaxLevel)
+        if (data.keyFinderLevel != correctedKeyFinder) {
+            data.keyFinderLevel = correctedKeyFinder
             changed = true
         }
 

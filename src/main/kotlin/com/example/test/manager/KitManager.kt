@@ -1,16 +1,22 @@
 package com.example.test
 import net.kyori.adventure.text.format.TextDecoration
+import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.scheduler.BukkitTask
+import java.util.UUID
 
 object KitManager {
     const val KIT_SET_MULTIPLIER_PER_TIER = 0.05
+    private const val PVP_ACTIVATION_SECONDS = 5
+    private val mineModeSnapshots = mutableMapOf<UUID, InventorySnapshot>()
+    private val pvpModeSnapshots = mutableMapOf<UUID, InventorySnapshot>()
+    private val currentModes = mutableMapOf<UUID, LoadoutMode>()
+    private val pendingPvpActivationTasks = mutableMapOf<UUID, BukkitTask>()
 
     fun giveStarterSpawnLoadout(player: Player) {
-        val data = DataStore.get(player.uniqueId)
-        equipHead(player, data.rank)
-        equipArmor(player, data.rank)
+        removePvpArmor(player)
         ensurePickaxe(player)
         giveStorage(player)
     }
@@ -92,20 +98,7 @@ object KitManager {
 
     fun givePickaxe(player: Player) {
         val data = DataStore.get(player.uniqueId)
-        val multiBreakChance = UpgradeFormulas.getMultiBreakBlockQuantity(data.multiBreakLevel, false, data.multiBreakMaxLevel)
-        val oreBoostChance = UpgradeFormulas.getOreBoostChance(data.oreBoostLevel, data.oreBoostMaxLevel, 0.0) * 100
-        val excavatorChance = UpgradeFormulas.getExcavatorChance(data.excavatorLevel, data.excavatorMaxLevel, 0.0) * 100
-        val pickaxe = ItemManager.makePickaxe(
-            data.rebirth,
-            player.level,
-            data.fortuneLevel,
-            data.multiBreakLevel,
-            multiBreakChance,
-            data.oreBoostLevel,
-            oreBoostChance,
-            data.excavatorLevel,
-            excavatorChance
-        )
+        val pickaxe = ItemManager.makePickaxe(data, player.level)
         player.inventory.addItem(pickaxe)
     }
 
@@ -128,24 +121,7 @@ object KitManager {
 
     fun refreshPickaxe(player: Player) {
         val data = DataStore.get(player.uniqueId)
-        val multiBreakChance = UpgradeFormulas.getMultiBreakBlockQuantity(
-            data.multiBreakLevel,
-            ItemManager.isProcBooster(player.inventory.itemInOffHand),
-            data.multiBreakMaxLevel
-        )
-        val oreBoostChance = UpgradeFormulas.getOreBoostChance(data.oreBoostLevel, data.oreBoostMaxLevel, 0.0) * 100
-        val excavatorChance = UpgradeFormulas.getExcavatorChance(data.excavatorLevel, data.excavatorMaxLevel, 0.0) * 100
-        val refreshed = ItemManager.makePickaxe(
-            data.rebirth,
-            player.level,
-            data.fortuneLevel,
-            data.multiBreakLevel,
-            multiBreakChance,
-            data.oreBoostLevel,
-            oreBoostChance,
-            data.excavatorLevel,
-            excavatorChance
-        )
+        val refreshed = ItemManager.makePickaxe(data, player.level, ItemManager.isProcBooster(player.inventory.itemInOffHand))
 
         for (slot in player.inventory.contents.indices) {
             val item = player.inventory.getItem(slot) ?: continue
@@ -153,6 +129,13 @@ object KitManager {
                 player.inventory.setItem(slot, refreshed.clone())
             }
         }
+    }
+
+    fun refreshPvpSword(player: Player) {
+        if (currentModes[player.uniqueId] != LoadoutMode.PVP && !isDangerZone(player.location)) return
+        val data = DataStore.get(player.uniqueId)
+        val swordTier = (data.rebirth + data.swordLevel).coerceAtLeast(1)
+        player.inventory.setItem(0, ItemManager.makeSword(swordTier))
     }
 
     fun giveStorage(player: Player) {
@@ -177,17 +160,237 @@ object KitManager {
     }
 
     fun ensureRankArmorState(player: Player) {
-        val data = DataStore.get(player.uniqueId)
-        equipHead(player, data.rank)
-        equipArmor(player, data.rank)
+        if (isDangerZone(player.location)) {
+            equipPvpLoadout(player)
+        }
     }
 
-    fun removeRankArmor(player: Player) {
+    fun removePvpArmor(player: Player) {
         player.inventory.helmet = null
         player.inventory.chestplate = null
         player.inventory.leggings = null
         player.inventory.boots = null
     }
+
+    fun syncLoadoutMode(player: Player, location: Location = player.location, force: Boolean = false) {
+        val targetMode = if (isMineMode(location)) LoadoutMode.MINE else LoadoutMode.PVP
+        val currentMode = currentModes[player.uniqueId]
+        if (force && currentMode == null && targetMode == LoadoutMode.MINE) {
+            currentModes[player.uniqueId] = LoadoutMode.MINE
+            restoreFlightForMineMode(player)
+            removePvpArmor(player)
+            return
+        }
+        if (targetMode == LoadoutMode.MINE) {
+            cancelPendingPvpActivation(player.uniqueId)
+            if (!force && currentMode == LoadoutMode.MINE) return
+            switchToMineMode(player)
+            currentModes[player.uniqueId] = LoadoutMode.MINE
+            return
+        }
+
+        if (!force && currentMode == LoadoutMode.PVP) return
+        if (force) {
+            cancelPendingPvpActivation(player.uniqueId)
+            switchToPvpMode(player)
+            currentModes[player.uniqueId] = LoadoutMode.PVP
+            sendDangerZoneTitle(player)
+            return
+        }
+
+        if (pendingPvpActivationTasks.containsKey(player.uniqueId)) return
+        startPvpActivationCountdown(player)
+    }
+
+    fun prepareForLogout(player: Player) {
+        cancelPendingPvpActivation(player.uniqueId)
+        persistCurrentLoadout(player)
+        val currentMode = currentModes[player.uniqueId]
+        if (currentMode == LoadoutMode.PVP) {
+            restoreMineSnapshotOrDefault(player)
+        }
+        currentModes.remove(player.uniqueId)
+        mineModeSnapshots.remove(player.uniqueId)
+    }
+
+    fun prepareForProgressReset(player: Player) {
+        cancelPendingPvpActivation(player.uniqueId)
+        persistCurrentLoadout(player)
+        currentModes[player.uniqueId] = LoadoutMode.MINE
+        if (!player.hasPermission("command.dev")) {
+            if (player.isFlying) {
+                player.isFlying = false
+            }
+            player.allowFlight = false
+        }
+    }
+
+    fun handlePvpDeath(player: Player) {
+        cancelPendingPvpActivation(player.uniqueId)
+        pvpModeSnapshots.remove(player.uniqueId)
+        mineModeSnapshots.remove(player.uniqueId)
+        currentModes.remove(player.uniqueId)
+    }
+
+    fun persistCurrentLoadout(player: Player) {
+        when (currentModes[player.uniqueId]) {
+            LoadoutMode.PVP -> pvpModeSnapshots[player.uniqueId] = captureInventory(player)
+            LoadoutMode.MINE -> mineModeSnapshots[player.uniqueId] = captureInventory(player)
+            null -> {
+                if (isDangerZone(player.location)) {
+                    pvpModeSnapshots[player.uniqueId] = captureInventory(player)
+                } else {
+                    mineModeSnapshots[player.uniqueId] = captureInventory(player)
+                }
+            }
+        }
+    }
+
+    private fun switchToMineMode(player: Player) {
+        pvpModeSnapshots[player.uniqueId] = captureInventory(player)
+        restoreMineSnapshotOrDefault(player)
+        restoreFlightForMineMode(player)
+    }
+
+    private fun switchToPvpMode(player: Player) {
+        cancelPendingPvpActivation(player.uniqueId)
+        mineModeSnapshots[player.uniqueId] = captureInventory(player)
+        val snapshot = pvpModeSnapshots[player.uniqueId]
+        if (snapshot != null) {
+            restoreInventory(player, snapshot)
+        } else {
+            player.inventory.clear()
+            player.inventory.setArmorContents(arrayOfNulls(4))
+            player.inventory.setItemInOffHand(null)
+        }
+        stripMineTools(player)
+        equipPvpLoadout(player)
+        disableFlightForPvpMode(player)
+    }
+
+    private fun restoreMineSnapshotOrDefault(player: Player) {
+        val snapshot = mineModeSnapshots[player.uniqueId]
+        if (snapshot != null) {
+            restoreInventory(player, snapshot)
+        } else {
+            player.inventory.clear()
+            player.inventory.setArmorContents(arrayOfNulls(4))
+            player.inventory.setItemInOffHand(null)
+            giveStarterSpawnLoadout(player)
+        }
+        removePvpArmor(player)
+    }
+
+    private fun startPvpActivationCountdown(player: Player) {
+        var secondsRemaining = PVP_ACTIVATION_SECONDS
+        ActionBarManager.sendActionBarFor(player, 1.05, "&cDanger Zone in: &f$secondsRemaining")
+        val task = org.bukkit.Bukkit.getScheduler().runTaskTimer(TestPlugin.instance, Runnable {
+            if (!player.isOnline) {
+                cancelPendingPvpActivation(player.uniqueId)
+                return@Runnable
+            }
+            if (isMineMode(player.location)) {
+                cancelPendingPvpActivation(player.uniqueId)
+                return@Runnable
+            }
+
+            secondsRemaining--
+            if (secondsRemaining <= 0) {
+                cancelPendingPvpActivation(player.uniqueId)
+                switchToPvpMode(player)
+                currentModes[player.uniqueId] = LoadoutMode.PVP
+                sendDangerZoneTitle(player)
+                return@Runnable
+            }
+
+            ActionBarManager.sendActionBarFor(player, 1.05, "&cDanger Zone in: &f$secondsRemaining")
+        }, 20L, 20L)
+        pendingPvpActivationTasks[player.uniqueId] = task
+    }
+
+    private fun cancelPendingPvpActivation(playerId: UUID) {
+        pendingPvpActivationTasks.remove(playerId)?.cancel()
+    }
+
+    private fun sendDangerZoneTitle(player: Player) {
+        TextUtil.showTitle(player, "&cDanger Zone", "&7PvP mode enabled", 0, 40, 10)
+    }
+
+    private fun disableFlightForPvpMode(player: Player) {
+        if (player.hasPermission("command.dev")) {
+            player.allowFlight = true
+            return
+        }
+        if (player.isFlying) {
+            player.isFlying = false
+        }
+        player.allowFlight = false
+    }
+
+    private fun restoreFlightForMineMode(player: Player) {
+        if (player.hasPermission("command.dev")) {
+            player.allowFlight = true
+            return
+        }
+        if (CombatManager.isInCombat(player)) {
+            player.allowFlight = false
+            if (player.isFlying) {
+                player.isFlying = false
+            }
+            return
+        }
+
+        val data = DataStore.get(player.uniqueId)
+        player.allowFlight = data.flightUnlocked && data.flight
+        if (!player.allowFlight && player.isFlying) {
+            player.isFlying = false
+        }
+    }
+
+    private fun equipPvpLoadout(player: Player) {
+        val data = DataStore.get(player.uniqueId)
+        val armorTier = (data.rebirth + 1).coerceAtMost(LevelManager.MAX_REBIRTH_LEVEL + 1).coerceAtLeast(1)
+        val swordTier = (data.rebirth + data.swordLevel).coerceAtLeast(1)
+        equipHead(player, armorTier)
+        equipArmor(player, armorTier)
+        player.inventory.setItem(0, ItemManager.makeSword(swordTier))
+        player.inventory.setItem(8, ItemStack(Material.GOLDEN_CARROT, 16))
+    }
+
+    private fun captureInventory(player: Player): InventorySnapshot {
+        val inventory = player.inventory
+        return InventorySnapshot(
+            contents = inventory.contents.map { it?.clone() }.toTypedArray(),
+            armor = inventory.armorContents.map { it?.clone() }.toTypedArray(),
+            offHand = inventory.itemInOffHand?.clone()
+        )
+    }
+
+    private fun restoreInventory(player: Player, snapshot: InventorySnapshot) {
+        val inventory = player.inventory
+        inventory.contents = snapshot.contents.map { it?.clone() }.toTypedArray()
+        inventory.armorContents = snapshot.armor.map { it?.clone() }.toTypedArray()
+        inventory.setItemInOffHand(snapshot.offHand?.clone())
+    }
+
+    private fun stripMineTools(player: Player) {
+        val inventory = player.inventory
+        for (slot in inventory.contents.indices) {
+            val item = inventory.getItem(slot) ?: continue
+            if (ItemManager.isPickaxe(item) || ItemManager.isStorage(item)) {
+                inventory.setItem(slot, null)
+            }
+        }
+        val offHand = inventory.itemInOffHand
+        if (ItemManager.isPickaxe(offHand) || ItemManager.isStorage(offHand)) {
+            inventory.setItemInOffHand(null)
+        }
+    }
+
+    fun isMineMode(location: Location): Boolean =
+        location.y > 95.0 || MineManager.containsMineAreaXZ(location)
+
+    fun isDangerZone(location: Location): Boolean = !isMineMode(location)
 
     fun getEffectiveSellMultiplier(player: Player): Double {
         val data = DataStore.get(player.uniqueId)
@@ -218,7 +421,7 @@ object KitManager {
     fun isRankArmorPiece(item: ItemStack?): Boolean {
         if (item == null) return false
         val displayName = TextUtil.toLegacyString(item.itemMeta?.displayName()) ?: return false
-        return Regex("T\\d+ .*?(Helmet|Chestplate|Leggings|Boots)").containsMatchIn(displayName)
+        return Regex("(T\\d+|Rebirth \\d+) .*?(Helmet|Chestplate|Leggings|Boots)").containsMatchIn(displayName)
     }
 
     fun getRankMultiplier(tier: Int): Double = (tier - 1).coerceAtLeast(0) * KIT_SET_MULTIPLIER_PER_TIER
@@ -232,4 +435,15 @@ object KitManager {
         val match = Regex("T(\\d+)").find(displayName) ?: return null
         return match.groupValues[1].toIntOrNull()
     }
+
+    private enum class LoadoutMode {
+        MINE,
+        PVP
+    }
+
+    private data class InventorySnapshot(
+        val contents: Array<ItemStack?>,
+        val armor: Array<ItemStack?>,
+        val offHand: ItemStack?
+    )
 }

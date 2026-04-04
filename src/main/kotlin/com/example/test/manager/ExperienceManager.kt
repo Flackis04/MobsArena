@@ -5,7 +5,7 @@ import org.bukkit.entity.Player
 import kotlin.math.floor
 
 object ExperienceManager {
-    private const val LEVELING_PACE_MULTIPLIER = 0.9
+    private const val LEVELING_PACE_MULTIPLIER = 0.6
 
     private val valuableExperience = mapOf(
         Material.DEEPSLATE_GOLD_ORE to 3,
@@ -62,10 +62,18 @@ object ExperienceManager {
     fun giveRawExperience(player: Player, baseExperience: Double) {
         if (baseExperience <= 0.0) return
         val data = DataStore.get(player.uniqueId)
-        MasteryManager.recordActivation(player, "xpGain")
+        val xpGainEnabled = UpgradeToggleManager.isEnabled(data, "xpGain")
+        if (xpGainEnabled) {
+            MasteryManager.recordActivation(player, "xpGain")
+        }
         val totalExperience = baseExperience *
-            getExperienceMultiplier(data.xpGainLevel, data.xpGainMaxLevel, ScrollManager.getBonus(data, UpgradeScrollType.XP_GAIN)) *
+            getExperienceMultiplier(
+                if (xpGainEnabled) data.xpGainLevel else 1,
+                data.xpGainMaxLevel,
+                ScrollManager.getBonus(data, UpgradeScrollType.XP_GAIN)
+            ) *
             data.extraExperienceMultiplier *
+            PotionsManager.getXpMultiplier(data) *
             LEVELING_PACE_MULTIPLIER /
             getAscensionXpCostMultiplier(data)
         val wholeExperience = floor(totalExperience).toInt()

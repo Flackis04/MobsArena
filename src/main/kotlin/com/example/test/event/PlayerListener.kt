@@ -11,10 +11,13 @@ import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.FoodLevelChangeEvent
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.entity.Vindicator
 import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.player.*
+import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import kotlin.math.floor
 
 class PlayerListener : Listener {
 
@@ -22,15 +25,18 @@ class PlayerListener : Listener {
     fun onJoin(event: PlayerJoinEvent) {
         val player = event.player
         val data = DataStore.get(player.uniqueId)
-        MineManager.ensureMineFor(player, teleportToMineTop = data.newPlayer != null)
+        MineManager.ensureMineFor(player, teleportToMineTop = false)
         ExperienceManager.clamp(player)
         ExperienceManager.restoreStoredLevel(player)
         PotionUtil.applyNightVision(player)
         player.foodLevel = 20
         player.saturation = 20f
-        player.playSound(player.location, "entity.item.pickup", 1f, 1f)
         if (data.newPlayer == null) {
-            TutorialManager.newPlayer(player)
+            TutorialManager.initializeFirstJoin(player)
+            player.teleport(MineManager.getSpawnLocation())
+            playFirstJoinWelcomeSounds(player)
+        } else {
+            player.playSound(player.location, "entity.item.pickup", 0.9f, 1.1f)
         }
         if (!data.hasReceivedJoinLoadout || KitManager.shouldReceiveStarterLoot(player)) {
             KitManager.giveStarterSpawnLoadout(player)
@@ -42,7 +48,7 @@ class PlayerListener : Listener {
             player.isFlying = false
         }
         LightningRodManager.handleJoin(player)
-        KitManager.ensureRankArmorState(player)
+        KitManager.syncLoadoutMode(player, force = true)
         data.playtimeSeconds = player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20L
         ScoreboardManager.refreshTabListForAll()
         HeadHunterManager.updatePossibleTargets()
@@ -51,6 +57,7 @@ class PlayerListener : Listener {
 
     @EventHandler
     fun onQuit(event: PlayerQuitEvent) {
+        KitManager.prepareForLogout(event.player)
         LightningRodManager.handleQuit(event.player)
         RetentionUpgradeManager.reset(event.player.uniqueId)
         MineManager.removeMineFor(event.player.uniqueId)
@@ -59,6 +66,18 @@ class PlayerListener : Listener {
         })
         HeadHunterManager.updatePossibleTargets()
         BossbarManager.removePlayer(event.player)
+    }
+
+    private fun playFirstJoinWelcomeSounds(player: Player) {
+        player.playSound(player.location, "ui.toast.challenge_complete", 0.9f, 1.05f)
+        Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
+            if (!player.isOnline) return@Runnable
+            player.playSound(player.location, "entity.player.levelup", 0.7f, 1.2f)
+        }, 6L)
+        Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
+            if (!player.isOnline) return@Runnable
+            player.playSound(player.location, "block.amethyst_block.resonate", 0.8f, 1.15f)
+        }, 14L)
     }
 
     @EventHandler
@@ -85,7 +104,7 @@ class PlayerListener : Listener {
             if (!data.flight) {
                 player.isFlying = false
             }
-            KitManager.ensureRankArmorState(player)
+            KitManager.syncLoadoutMode(player, force = true)
             player.updateInventory()
         }, 1L)
     }
@@ -95,12 +114,16 @@ class PlayerListener : Listener {
         Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
             ExperienceManager.clamp(event.player)
             ExperienceManager.restoreStoredLevel(event.player)
+            KitManager.syncLoadoutMode(event.player, force = true)
         }, 1L)
     }
 
     @EventHandler
     fun onFoodLevelChange(event: FoodLevelChangeEvent) {
         val player = event.entity as? Player ?: return
+        if (KitManager.isDangerZone(player.location)) {
+            return
+        }
         event.isCancelled = true
         player.foodLevel = 20
         player.saturation = 20f
@@ -110,6 +133,7 @@ class PlayerListener : Listener {
     fun onInteract(event: PlayerInteractEvent) {
         val player = event.player
         val item = event.item
+        val action = event.action
         if (ItemManager.isBanknote(item)) {
             event.isCancelled = true
             val amount = ItemManager.getBanknoteAmount(item) ?: return
@@ -141,8 +165,57 @@ class PlayerListener : Listener {
             }
             return
         }
+        if (ItemManager.isTokenShard(item)) {
+            event.isCancelled = true
+            val amount = player.inventory.all(item!!.type).values.sumOf { it.amount }
+            if (amount > 0) {
+                player.inventory.remove(item.type)
+                val data = DataStore.get(player.uniqueId)
+                data.tokens += amount.toLong()
+                ScoreboardManager.updateBoard(player)
+                SessionTimelineManager.record(player, "Redeemed x$amount ${ItemManager.TOKEN_NAME_PLURAL}")
+                player.sendMessage(TextUtil.colorize("&aYou redeemed &bx$amount ${ItemManager.TOKEN_NAME_PLURAL}&a!"))
+                player.playSound(player.location, "entity.player.levelup", 0.5f, 1.25f)
+            }
+            return
+        }
+        val xpBottleTier = ItemManager.getJackpotXpBottleTier(item)
+        if (xpBottleTier != null) {
+            event.isCancelled = true
+            if (item!!.amount <= 1) {
+                player.inventory.setItemInMainHand(null)
+            } else {
+                item.amount -= 1
+            }
+            player.giveExpLevels(xpBottleTier.levelsGranted)
+            val data = DataStore.get(player.uniqueId)
+            data.level = player.level
+            SessionTimelineManager.record(player, "Used ${xpBottleTier.displayName} for +${xpBottleTier.levelsGranted} levels")
+            TextUtil.showTitle(
+                player,
+                "&b${xpBottleTier.displayName}",
+                "&7Gained &b+${xpBottleTier.levelsGranted} levels",
+                10,
+                35,
+                10
+            )
+            player.playSound(player.location, "entity.experience_orb.pickup", 0.8f, 1.45f)
+            ScoreboardManager.updateBoard(player)
+            return
+        }
+        val buffPotionType = ItemManager.getBuffPotionType(item)
+        if (buffPotionType != null) {
+            if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return
+            event.isCancelled = true
+            if (item!!.amount <= 1) {
+                player.inventory.setItemInMainHand(null)
+            } else {
+                item.amount -= 1
+            }
+            PotionsManager.activateBuff(player, buffPotionType)
+            return
+        }
 
-        val action = event.action
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return
 
         when {
@@ -160,8 +233,7 @@ class PlayerListener : Listener {
         }
 
         if (item != null && item.type == Material.PLAYER_HEAD) {
-            val data = DataStore.get(player.uniqueId)
-            if (!data.hasEnabledPvp && KitManager.isRankArmorPiece(player.inventory.helmet)) {
+            if (KitManager.isMineMode(player.location) && KitManager.isRankArmorPiece(player.inventory.helmet)) {
                 event.isCancelled = true
                 return
             }
@@ -174,9 +246,29 @@ class PlayerListener : Listener {
 
     @EventHandler
     fun onBlockPlace(event: BlockPlaceEvent) {
-        if (event.player.world.name == "mine" && MineManager.valuables.contains(event.block.type)) {
-            event.isCancelled = true
+        if (event.player.world.name != "mine") return
+
+        if (event.block.y > 95) {
+            return
         }
+
+        if (MineManager.containsMineAreaXZ(event.block.location)) {
+            event.isCancelled = true
+            return
+        }
+
+        if (MineManager.valuables.contains(event.block.type)) {
+            event.isCancelled = true
+            return
+        }
+
+        val placedBlock = event.block
+        val placedType = placedBlock.type
+        Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
+            if (placedBlock.type == placedType) {
+                placedBlock.type = Material.AIR
+            }
+        }, 20L * 15L)
     }
 
     @EventHandler
@@ -189,6 +281,16 @@ class PlayerListener : Listener {
         val from = event.from
         if (to.blockX == from.blockX && to.blockY == from.blockY && to.blockZ == from.blockZ) return
         val player = event.player
+        val wasInMineZone = KitManager.isMineMode(from)
+        val isInMineZone = KitManager.isMineMode(to)
+        if (!wasInMineZone && isInMineZone && CombatManager.isInCombat(player)) {
+            event.setTo(from)
+            player.sendMessage(TextUtil.colorize("&cYou cannot enter a mine while in combat."))
+            return
+        }
+        if (wasInMineZone != isInMineZone) {
+            KitManager.syncLoadoutMode(player, to)
+        }
         if (to.y <= 33.0) {
             val mineCenter = MineManager.getPlayerMineCenterLocation(player, 1.0) ?: MineManager.getSpawnLocation()
             player.teleport(mineCenter)
@@ -215,12 +317,21 @@ class PlayerListener : Listener {
 
     @EventHandler
     fun onDeath(event: PlayerDeathEvent) {
-        event.keepInventory = true
+        val victim = event.entity
+        val data = DataStore.get(victim.uniqueId)
+        val diedInDangerZone = KitManager.isDangerZone(victim.location)
+        event.keepInventory = !diedInDangerZone
         event.keepLevel = true
         event.setShouldDropExperience(false)
         event.droppedExp = 0
-        event.drops.clear()
-        val victim = event.entity
+        val remainingLevels = floor(victim.level * 0.5).toInt().coerceAtLeast(0)
+        victim.level = remainingLevels
+        data.level = remainingLevels
+        if (!diedInDangerZone) {
+            event.drops.clear()
+        } else {
+            KitManager.handlePvpDeath(victim)
+        }
         val attacker = victim.killer
         if (attacker != null) {
             handlePlayerKill(attacker, victim)
@@ -230,15 +341,34 @@ class PlayerListener : Listener {
 
     @EventHandler
     fun onDamage(event: EntityDamageByEntityEvent) {
+        val playerVictim = event.entity as? Player
+        val vindicatorDamager = event.damager as? Vindicator
+        if (playerVictim != null && vindicatorDamager != null && VindicatorManager.isManaged(vindicatorDamager)) {
+            if (KitManager.isMineMode(playerVictim.location)) {
+                event.isCancelled = true
+                vindicatorDamager.target = null
+            }
+            return
+        }
+
         val attacker = when (val damager = event.damager) {
             is Player -> damager
             is org.bukkit.entity.Projectile -> damager.shooter as? Player
             else -> null
         } ?: return
+        if (event.entity is Vindicator) {
+            if (KitManager.isMineMode(attacker.location)) {
+                event.isCancelled = true
+            }
+            return
+        }
         val victim = event.entity as? Player ?: return
-        val attackerData = DataStore.get(attacker.uniqueId)
-        val victimData = DataStore.get(victim.uniqueId)
-        if (!attackerData.hasEnabledPvp || !victimData.hasEnabledPvp) {
+        if (
+            attacker.location.y > 95.0 ||
+            victim.location.y > 95.0 ||
+            MineManager.containsMineAreaXZ(attacker.location) ||
+            MineManager.containsMineAreaXZ(victim.location)
+        ) {
             event.isCancelled = true
             return
         }
@@ -261,6 +391,8 @@ fun handlePlayerKill(attacker: Player, victim: Player) {
 
     val count = attackerData.victims.count { it == victim.name }
     attackerData.kills += 1
+    attackerData.battlepassTotalKills += 1
+    recordBattlepassWeaponKill(attackerData, attacker.inventory.itemInMainHand)
     victimData.deaths += 1
     if (count >= 2) {
         attacker.sendMessage(TextUtil.colorize("&cYou've killed this person too many times within a short period"))
@@ -279,4 +411,23 @@ fun handlePlayerKill(attacker: Player, victim: Player) {
     if (remainder > 0) attacker.inventory.addItem(stack.apply { amount = remainder.toInt() })
     ScoreboardManager.updateBoard(attacker)
     ScoreboardManager.updateBoard(victim)
+}
+
+private fun recordBattlepassWeaponKill(data: PlayerData, weapon: ItemStack?) {
+    when (weapon?.type) {
+        Material.WOODEN_SWORD,
+        Material.STONE_SWORD,
+        Material.IRON_SWORD,
+        Material.DIAMOND_SWORD,
+        Material.NETHERITE_SWORD -> data.battlepassSwordKills += 1
+
+        Material.WOODEN_AXE,
+        Material.STONE_AXE,
+        Material.IRON_AXE,
+        Material.DIAMOND_AXE,
+        Material.NETHERITE_AXE -> data.battlepassAxeKills += 1
+
+        Material.MACE -> data.battlepassMaceKills += 1
+        else -> Unit
+    }
 }

@@ -60,54 +60,6 @@ class ClanCommand : CommandExecutor {
     }
 }
 
-class TrustCommand : CommandExecutor {
-    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        val player = sender as? Player ?: return true
-        if (args.isEmpty()) {
-            sendHelp(player)
-            return true
-        }
-
-        val response = when (args[0].lowercase()) {
-            "add" -> {
-                val targetName = args.getOrNull(1) ?: return false
-                val target = Bukkit.getOfflinePlayer(targetName)
-                MineAccessManager.trustPlayer(player, target)
-            }
-            "remove" -> {
-                val targetName = args.getOrNull(1) ?: return false
-                val target = Bukkit.getOfflinePlayer(targetName)
-                MineAccessManager.untrustPlayer(player, target)
-            }
-            "list" -> {
-                val trusted = MineAccessManager.getTrustedPlayers(player.uniqueId)
-                if (trusted.isEmpty()) {
-                    player.sendMessage(TextUtil.colorize("&7You are not trusting anyone on your mine."))
-                    return true
-                }
-                player.sendMessage(TextUtil.colorize("&d&lTrusted Players"))
-                trusted.forEach { target ->
-                    player.sendMessage(TextUtil.colorize("&7- &f${target.name ?: "Unknown"}"))
-                }
-                return true
-            }
-            else -> {
-                sendHelp(player)
-                return true
-            }
-        }
-
-        player.sendMessage(TextUtil.colorize(response))
-        return true
-    }
-
-    private fun sendHelp(player: Player) {
-        player.sendMessage(TextUtil.colorize("&d/trust add <player> &8- &7Grant mine access to a player."))
-        player.sendMessage(TextUtil.colorize("&d/trust remove <player> &8- &7Remove a trusted player."))
-        player.sendMessage(TextUtil.colorize("&d/trust list &8- &7List all trusted players."))
-    }
-}
-
 class GiveClanPointsCommand : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (sender is Player && !sender.hasPermission("command.dev")) {

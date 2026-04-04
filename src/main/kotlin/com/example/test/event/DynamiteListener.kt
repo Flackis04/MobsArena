@@ -164,16 +164,17 @@ class DynamiteListener : Listener {
                     if (stored != null && block.type != stored) {
                         block.type = stored
                     }
+                    val effectiveFortuneLevel = UpgradeToggleManager.getEffectiveLevel(data, "fortune", data.fortuneLevel)
                     val fortuneMaxLevel = data.fortuneMaxLevel
                     val fortuneScrollBonus = 0.0
                     val blockDrops = if (actualType in MineManager.valuables) {
-                        MineManager.getConfiguredDrops(actualType, data.fortuneLevel, fortuneMaxLevel, fortuneScrollBonus)
+                        MineManager.getConfiguredDrops(actualType, effectiveFortuneLevel, data, fortuneMaxLevel, fortuneScrollBonus)
                     } else {
                         block.getDrops(ItemStack(Material.DIAMOND_PICKAXE), player).map {
                             it.clone().apply {
                                 amount = BlockRemovalManager.rollScaledAmount(
                                     amount,
-                                    BlockRemovalManager.getFortuneMultiplier(actualType, data.fortuneLevel, fortuneMaxLevel, fortuneScrollBonus)
+                                    BlockRemovalManager.getFortuneMultiplier(actualType, effectiveFortuneLevel, data, fortuneMaxLevel, fortuneScrollBonus)
                                 )
                             }
                         }

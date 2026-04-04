@@ -13,12 +13,12 @@
   balance: 9999997470158
   kills: 0
   deaths: 0
-  blocksMined: 49314
-  playtimeSeconds: 76302
+  blocksMined: 49319
+  playtimeSeconds: 76703
   hasClaimedBattlepass: []
   hasUsedNoobProtection: false
   excavatorEfficiencyLevel: 4
-  multiplier: 1.75
+  multiplier: 1.25
   tokens: 4
   flight: false
   hasReceivedJoinLoadout: true
@@ -57,7 +57,7 @@
   - 11
   rank: 1
   level: 35
-  rebirth: 3
+  rebirth: 1
   hasSold: true
   valuableCollected:
     AMETHYST_BLOCK: 42
@@ -81,19 +81,27 @@
   discordMultiplierBonus: 0.0
   autoMinerStorageContents:
   - type: RAW_GOLD
-    amount: 150
+    amount: 288
   - type: DIAMOND
-    amount: 96
+    amount: 181
   - type: EMERALD
-    amount: 64
+    amount: 130
   - type: AMETHYST_BLOCK
-    amount: 43
+    amount: 81
   - type: GOLD_BLOCK
-    amount: 15
+    amount: 23
   - type: REDSTONE_BLOCK
-    amount: 11
+    amount: 13
   - type: LAPIS_BLOCK
+    amount: 12
+  - type: DIAMOND_BLOCK
+    amount: 2
+  - type: EMERALD_BLOCK
     amount: 4
+  - type: ANCIENT_DEBRIS
+    amount: 1
+  - type: NETHERITE_BLOCK
+    amount: 1
   - type: OBSIDIAN
     amount: 1
   lightningLevel: 4
@@ -139,7 +147,7 @@
   oreFrequencyLevel: 4
   hasSeenMineHelp: false
   mineCenterX: 0
-  mineCenterZ: -12
+  mineCenterZ: -100
   multiBreakScrollBonus: 0.0
   upgradeScrollBonuses:
     fortune: 5.0

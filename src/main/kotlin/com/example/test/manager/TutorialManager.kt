@@ -27,7 +27,7 @@ object TutorialManager {
     fun isRunning(data: PlayerData): Boolean =
         data.tutorialActive
 
-    fun newPlayer(player: Player) {
+    fun initializeFirstJoin(player: Player) {
         val data = DataStore.get(player.uniqueId)
         Bukkit.broadcast(TextUtil.toComponent("&d A new player joined! Welcome ${player.name} to the server!"))
         WelcomeRewardManager.registerNewPlayer(player)
@@ -43,19 +43,26 @@ object TutorialManager {
         data.hasSeenUpgradeHint = false
         data.valuableBlocksBroken = 0
         data.hasSeenBackpackSellHint = false
-        data.tutorialActive = true
+        data.tutorialActive = false
         data.tutorialPendingUpgradeClose = false
         DataStore.save()
-        player.teleport(MineManager.getSpawnLocation())
-        showOrQueueTitle(player, "&aWelcome", "&7Mine is generating.", 10, 50, 10)
-        Bukkit.getScheduler().runTaskLater(TestPlugin.instance, Runnable {
-            if (!player.isOnline) return@Runnable
-            val mineLocation = MineManager.getPlayerMineCenterLocation(player)?.add(0.0, 1.0, 0.0)
-                ?: MineManager.getSpawnLocation()
-            player.teleport(mineLocation)
-            showOrQueueTitle(player, "&aMine Ready", "&7Mine 5 ores.", 10, 40, 10)
-            BossbarManager.refreshPlayer(player)
-        }, 70L)
+        showOrQueueTitle(player, "&aWelcome", "&7Use &f/mine &7to start your first mine.", 10, 55, 10)
+    }
+
+    fun startMineTutorial(player: Player) {
+        val data = DataStore.get(player.uniqueId)
+        if (data.hasTouched) return
+
+        data.hasTouched = true
+        data.hasBroken = false
+        data.hasSold = false
+        data.hasSeenUpgradeHint = false
+        data.valuableBlocksBroken = 0
+        data.hasSeenBackpackSellHint = false
+        data.tutorialActive = true
+        data.tutorialPendingUpgradeClose = false
+        showOrQueueTitle(player, "&aMine Ready", "&7Mine 5 ores.", 10, 40, 10)
+        BossbarManager.refreshPlayer(player)
     }
 
     fun handleValuableBreak(player: Player) {

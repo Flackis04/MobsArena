@@ -14,6 +14,10 @@ commands:
   stats:
     description: Show player stats
     usage: /stats [player]
+  leaderboards:
+    description: Open leaderboard browser
+    usage: /leaderboards
+    aliases: [leaderboard]
   setdata:
     description: Set a PlayerData field for a player
     usage: /setdata <player> <field> <value>
@@ -45,9 +49,6 @@ commands:
   givelightningrod:
     description: Give a Storm Rod deployable
     usage: /givelightningrod <player> [amount]
-  trust:
-    description: Trust players on your mine
-    usage: /trust
   kit:
     description: Give a tier kit
     usage: /kit <tier> [player]
@@ -57,6 +58,9 @@ commands:
   autominer:
     description: Open auto miner GUI
     usage: /autominer
+  potionshop:
+    description: Open potion shop GUI
+    usage: /potionshop
   blackmarket:
     description: Open blackmarket GUI
     usage: /blackmarket
@@ -68,8 +72,14 @@ commands:
     description: Open PvP combat shop
     usage: /pvpshop
   upgrades:
-    description: Open upgrades GUI
+    description: Open rankup upgrades GUI
     usage: /upgrades
+  prefs:
+    description: Open preferences GUI
+    usage: /prefs
+  milestones:
+    description: Open milestones
+    usage: /milestones
   battlepass:
     description: Open battlepass
     usage: /battlepass
@@ -96,9 +106,6 @@ commands:
   togglepvp:
     description: Toggle PvP mode
     usage: /togglepvp
-  animations:
-    description: Open animation settings
-    usage: /animations
   rebirth:
     description: Unlock rebirth
     usage: /rebirth
@@ -127,10 +134,14 @@ commands:
     usage: /movelb
   tabdebug:
     usage: /tabdebug
-  givediscordlinkrewards:
-    usage: /givediscordlinkrewards
+  linkdiscord:
+    usage: /linkdiscord <player>
+  unlinkdiscord:
+    usage: /unlinkdiscord <player>
   givescroll:
     usage: /givescroll <rarity> [amount]
+  keyall:
+    usage: /keyall <common|uncommon|rare|epic|legendary> [amount]
   store:
     usage: /store
   ascend:

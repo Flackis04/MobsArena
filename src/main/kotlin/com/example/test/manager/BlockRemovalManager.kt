@@ -60,17 +60,17 @@ object BlockRemovalManager {
         if (stored != null && block.type != stored) block.type = stored
         val blockData = block.blockData.clone()
         val data = DataStore.get(player.uniqueId)
-        val fortuneLevel = data.fortuneLevel
+        val fortuneLevel = UpgradeToggleManager.getEffectiveLevel(data, "fortune", data.fortuneLevel)
         val fortuneMaxLevel = data.fortuneMaxLevel
         val fortuneScrollBonus = 0.0
         val drops = if (actualType in MineManager.valuables) {
-            MineManager.getConfiguredDrops(actualType, fortuneLevel, fortuneMaxLevel, fortuneScrollBonus)
+            MineManager.getConfiguredDrops(actualType, fortuneLevel, data, fortuneMaxLevel, fortuneScrollBonus)
         } else {
             block
                 .getDrops(ItemStack(player.inventory.itemInMainHand.type), player)
                 .map { drop ->
                     drop.clone().apply {
-                        amount = rollScaledAmount(amount, getFortuneMultiplier(actualType, fortuneLevel, fortuneMaxLevel, fortuneScrollBonus))
+                        amount = rollScaledAmount(amount, getFortuneMultiplier(actualType, fortuneLevel, data, fortuneMaxLevel, fortuneScrollBonus))
                     }
                 }
                 .toList()
@@ -126,7 +126,8 @@ object BlockRemovalManager {
         }
 
         val data = DataStore.get(player.uniqueId)
-        val hasStorage = player.inventory.contents.any { ItemManager.isStorage(it) }
+        val hasStorage = data.backpackEnabled &&
+            (player.inventory.contents.any { ItemManager.isStorage(it) } || ItemManager.isStorage(player.inventory.itemInOffHand))
 
         for (drop in drops) {
             if (drop.type == Material.AIR) continue
@@ -136,13 +137,7 @@ object BlockRemovalManager {
             if (valuableIndex != -1) {
                 val clanAdjustedAmount = rollScaledAmount(drop.amount, ClanManager.getPlayerFortuneMultiplier(player.uniqueId))
                 val comboAdjustedAmount = rollScaledAmount(clanAdjustedAmount, RetentionUpgradeManager.getComboMultiplier(player))
-                val oreBoostMultiplier = if (data.oreBoostActive) {
-                    UpgradeFormulas.getProcPowerOreBoostMultiplier(data.procPowerLevel, data.procPowerMaxLevel)
-                } else {
-                    1.0
-                }
-                val oreBoostAdjustedAmount = rollScaledAmount(comboAdjustedAmount, oreBoostMultiplier)
-                val totalGenerated = RetentionUpgradeManager.tryApplyJackpot(player, oreBoostAdjustedAmount)
+                val totalGenerated = comboAdjustedAmount
                 if (totalGenerated > 0) {
                     val payoutStack = MineManager.createValuableItem(drop.type, totalGenerated)
                     if (!hasStorage) {
@@ -158,6 +153,7 @@ object BlockRemovalManager {
                         }
                     }
                 }
+                RetentionUpgradeManager.tryApplyJackpot(player, originLoc)
 
                 MasteryManager.recordValuableCollection(player, drop.type, totalGenerated)
                 if (totalGenerated > 0) {
@@ -182,6 +178,14 @@ object BlockRemovalManager {
         if (blockType !in MineManager.valuables) return 1.0
         return UpgradeFormulas.getFortuneMultiplier(fortuneLevel, maxLevel, scrollBonus)
     }
+
+    fun getFortuneMultiplier(
+        blockType: Material,
+        fortuneLevel: Int,
+        playerData: PlayerData,
+        maxLevel: Int = LevelManager.fortuneMaxLevel,
+        scrollBonus: Double = 0.0
+    ): Double = getFortuneMultiplier(blockType, fortuneLevel, maxLevel, scrollBonus) * PotionsManager.getFortuneMultiplier(playerData)
 
     fun rollFortuneAmount(blockType: Material, fortuneLevel: Int, maxLevel: Int = LevelManager.fortuneMaxLevel, scrollBonus: Double = 0.0): Int {
         val multiplier = getFortuneMultiplier(blockType, fortuneLevel, maxLevel, scrollBonus).coerceAtLeast(1.0)

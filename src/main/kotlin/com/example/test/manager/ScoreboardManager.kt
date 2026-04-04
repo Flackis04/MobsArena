@@ -51,6 +51,8 @@ object ScoreboardManager {
         val balance = TextUtil.formatNum(data.balance)
         val tokens = TextUtil.formatNum(data.tokens)
         val playtime = TextUtil.formatPlaytime(data.playtimeSeconds)
+        val kills = TextUtil.formatNum(data.kills)
+        val deaths = TextUtil.formatNum(data.deaths)
         val multiplier = String.format("%.2f", KitManager.getEffectiveSellMultiplier(player))
         player.playerListName(TextUtil.toComponent(getTabName(player, data)))
         player.playerListOrder = getTabOrder(player, data)
@@ -74,11 +76,12 @@ object ScoreboardManager {
             "${ItemManager.COIN_NAME_PLURAL}: &b$balance",
             "&3Tokens: &b$tokens",
             "&2Multiplier: &b${multiplier}x",
-            "&dRank: &b${data.rank}",
+            "&dRank: &b${formatDisplayedRank(data)}",
             "&aLevel: &b${player.level}",
             "&9Blocks Mined: &b$blocks",
+            "&cKills: &b$kills",
+            "&7Deaths: &b$deaths",
             "&3Playtime: &b$playtime",
-            "",
             "&7ᴍᴏʙꜱᴀʀᴇɴᴀ.ᴍɪɴᴇʜᴜᴛ.ɢɢ"
         )
 

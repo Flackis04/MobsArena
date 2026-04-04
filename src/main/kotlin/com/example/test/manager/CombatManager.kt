@@ -76,6 +76,10 @@ object CombatManager : Listener {
             handlePlayerKill(attacker, quitter)
             attacker.sendMessage(TextUtil.colorize("&c${quitter.name} combat logged."))
             Bukkit.broadcast(TextUtil.toComponent("&c${quitter.name} &7combat logged against &c${attacker.name}&7."))
+        } else {
+            val data = DataStore.get(quitter.uniqueId)
+            data.deaths += 1
+            Bukkit.broadcast(TextUtil.toComponent("&c${quitter.name} &7combat logged."))
         }
 
         clearCombat(quitter)
@@ -90,6 +94,10 @@ object CombatManager : Listener {
         (combatUntil[playerId] ?: 0L) - now
 
     private fun disableFlight(player: Player) {
+        if (player.hasPermission("command.dev")) {
+            player.allowFlight = true
+            return
+        }
         if (player.isFlying) {
             player.isFlying = false
         }
@@ -97,6 +105,10 @@ object CombatManager : Listener {
     }
 
     private fun restoreFlight(player: Player) {
+        if (player.hasPermission("command.dev")) {
+            player.allowFlight = true
+            return
+        }
         val data = DataStore.get(player.uniqueId)
         if (data.flightUnlocked && data.flight) {
             player.allowFlight = true

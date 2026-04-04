@@ -173,10 +173,11 @@ class StorageGui(
         val sellValue = StorageManager.getSellValue(player, material) ?: 0L
         val totalValue = (sellValue * amount * StorageManager.resolveSellMultiplier(player)).toLong()
         val template = MineManager.createValuableItem(material, 1)
+        val discovered = DataStore.get(player.uniqueId).getCollectedAmount(material) > 0L
 
         return ItemStack(material, amount.coerceIn(1, material.maxStackSize)).apply {
             editMeta { meta ->
-                meta.displayName(template.itemMeta.displayName())
+                meta.displayName(MineManager.getValuableDisplayName(material, discovered))
                 meta.lore(
                     listOf(
                         TextUtil.toComponent("&7Quantity: &f${TextUtil.formatNum(amount)}").decoration(TextDecoration.ITALIC, false),
@@ -191,17 +192,23 @@ class StorageGui(
 
     private fun createEmptyValuableItem(index: Int): ItemStack {
         val material = MineManager.valuableDrops[index]
-        val template = MineManager.createValuableItem(material, 1)
-        return ItemStack(Material.STONE_BUTTON).apply {
+        val discovered = DataStore.get(player.uniqueId).getCollectedAmount(material) > 0L
+        return ItemStack(if (discovered) Material.STONE_BUTTON else Material.POLISHED_BLACKSTONE_BUTTON).apply {
             editMeta { meta ->
-                meta.displayName(template.itemMeta.displayName())
+                meta.displayName(MineManager.getValuableDisplayName(material, discovered))
                 meta.lore(
-                    listOf(
-                        TextUtil.toComponent("&7Quantity: &f0").decoration(TextDecoration.ITALIC, false),
-                        TextUtil.toComponent("&7Sell price: &a0 ${ItemManager.COIN_NAME_PLURAL}").decoration(TextDecoration.ITALIC, false),
-                        TextUtil.toComponent("&7Left click: &aSell All").decoration(TextDecoration.ITALIC, false),
-                        TextUtil.toComponent("&7Shift-left-click: &dView mastery").decoration(TextDecoration.ITALIC, false)
-                    )
+                    if (discovered) {
+                        listOf(
+                            TextUtil.toComponent("&7Quantity: &f0").decoration(TextDecoration.ITALIC, false),
+                            TextUtil.toComponent("&7Sell price: &a0 ${ItemManager.COIN_NAME_PLURAL}").decoration(TextDecoration.ITALIC, false),
+                            TextUtil.toComponent("&7Left click: &aSell All").decoration(TextDecoration.ITALIC, false),
+                            TextUtil.toComponent("&7Shift-left-click: &dView mastery").decoration(TextDecoration.ITALIC, false)
+                        )
+                    } else {
+                        listOf(
+                            TextUtil.toComponent("&7Not discovered yet").decoration(TextDecoration.ITALIC, false)
+                        )
+                    }
                 )
             }
         }
@@ -223,7 +230,10 @@ class StorageGui(
         val tutorialMode = TutorialManager.isTutorialMode(player)
         val eventMultiplier = if (!tutorialMode && BossbarManager.hasActiveSellMultiplier()) BossbarManager.multiplier else 1.0
         val baseSellMultiplier = KitManager.getEffectiveSellMultiplier(player)
-        val upgradeSellMultiplier = UpgradeFormulas.getSellMultiplier(data.sellMultiplierLevel, data.sellMultiplierMaxLevel)
+        val upgradeSellMultiplier = UpgradeFormulas.getSellMultiplier(
+            UpgradeToggleManager.getEffectiveLevel(data, "sellMultiplier", data.sellMultiplierLevel),
+            data.sellMultiplierMaxLevel
+        )
         val finalSellMultiplier = StorageManager.resolveSellMultiplier(player)
         val netSellMultiplier = StorageManager.getNetSellMultiplier(player)
 

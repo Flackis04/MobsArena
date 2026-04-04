@@ -23,6 +23,8 @@ object DataStore {
         "trustedMinePlayers",
         "hasClaimedBattlepass",
         "hasClaimedPlaytimeRewards",
+        "battlepassClaimedRewards",
+        "battlepassClaimedQuests",
         "killStreak",
         "victims",
         "oreBoostActive",
@@ -86,6 +88,8 @@ object DataStore {
 
             config.set("$key.hasClaimedBattlepass", d.hasClaimedBattlepass.toList())
             config.set("$key.hasClaimedPlaytimeRewards", d.hasClaimedPlaytimeRewards.toList())
+            config.set("$key.battlepassClaimedRewards", d.battlepassClaimedRewards.toList())
+            config.set("$key.battlepassClaimedQuests", d.battlepassClaimedQuests.toList())
             config.set("$key.animationsEnabled", d.animationsEnabled)
             config.set("$key.animationLinearMode", d.animationLinearMode)
             config.set("$key.animationExtraBlockDelayTicks", d.animationExtraBlockDelayTicks)
@@ -122,6 +126,8 @@ object DataStore {
             d.trustedMinePlayers = config.getStringList("$key.trustedMinePlayers").toMutableList()
             d.hasClaimedBattlepass = config.getIntegerList("$key.hasClaimedBattlepass").toMutableSet()
             d.hasClaimedPlaytimeRewards = config.getIntegerList("$key.hasClaimedPlaytimeRewards").toMutableSet()
+            d.battlepassClaimedRewards = config.getIntegerList("$key.battlepassClaimedRewards").toMutableSet()
+            d.battlepassClaimedQuests = config.getStringList("$key.battlepassClaimedQuests").toMutableSet()
 
             data[uuid] = d
         }
@@ -278,6 +284,8 @@ class PlayerData {
     var sellMultiplierMaxLevel = LevelManager.sellMultiplierMaxLevel
     var tokenFinderLevel = 1
     var tokenFinderMaxLevel = LevelManager.tokenFinderMaxLevel
+    var keyFinderLevel = 1
+    var keyFinderMaxLevel = LevelManager.keyFinderMaxLevel
     var jackpotLevel = 1
     var jackpotMaxLevel = LevelManager.jackpotMaxLevel
     var comboLevel = 1
@@ -294,6 +302,10 @@ class PlayerData {
     var autoMinerBackpackMaxLevel = LevelManager.autoMinerBackpackMaxLevel
     var autoMinerLuckLevel = 1
     var autoMinerLuckMaxLevel = LevelManager.autoMinerLuckMaxLevel
+    var autoMinerPayoutLevel = 1
+    var autoMinerPayoutMaxLevel = LevelManager.autoMinerPayoutMaxLevel
+    var swordLevel = 1
+    var swordMaxLevel = LevelManager.swordMaxLevel
 
     var balance = 0L
     var tokens = 0L
@@ -322,6 +334,14 @@ class PlayerData {
     var donorRankMultiplier = 0.0
     var mineWeightBonusMultiplier = 1.0
     var extraExperienceMultiplier = 1.0
+    var minePotionMultiplier = 1.0
+    var minePotionExpiresAt = 0L
+    var xpPotionMultiplier = 1.0
+    var xpPotionExpiresAt = 0L
+    var procPotionMultiplier = 1.0
+    var procPotionExpiresAt = 0L
+    var fortunePotionMultiplier = 1.0
+    var fortunePotionExpiresAt = 0L
     var hasEnabledPvp = false
 
     var newPlayer: Boolean? = null
@@ -349,12 +369,37 @@ class PlayerData {
 
     var hasClaimedBattlepass: MutableSet<Int> = mutableSetOf()
     var hasClaimedPlaytimeRewards: MutableSet<Int> = mutableSetOf()
+    var battlepassClaimedRewards: MutableSet<Int> = mutableSetOf()
+    var battlepassClaimedQuests: MutableSet<String> = mutableSetOf()
+    var battlepassPoints = 0L
+    var battlepassSwordKills = 0
+    var battlepassAxeKills = 0
+    var battlepassMaceKills = 0
+    var battlepassTotalKills = 0
 
     var killStreak = 0
     var victims: MutableList<String> = mutableListOf()
 
     var oreBoostActive = false
     var excavatorActive = false
+
+    var multiBreakEnabled = true
+    var oreBoostEnabled = true
+    var fortuneEnabled = true
+    var excavatorEnabled = true
+    var lightningEnabled = true
+    var virtualJackhammerEnabled = true
+    var excavatorEfficiencyEnabled = true
+    var xpGainEnabled = true
+    var oreFrequencyEnabled = true
+    var scrollFinderEnabled = true
+    var backpackEnabled = true
+    var sellMultiplierEnabled = true
+    var tokenFinderEnabled = true
+    var keyFinderEnabled = true
+    var jackpotEnabled = true
+    var comboEnabled = true
+    var procPowerEnabled = true
 
     fun getCollectedAmount(material: org.bukkit.Material): Long = valuableCollected[material.name] ?: 0L
 

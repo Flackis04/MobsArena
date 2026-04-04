@@ -20,10 +20,10 @@ import kotlin.math.pow
 private val openGuis: MutableMap<Player, GenericUpgradeGui> = mutableMapOf()
 private val activeUpgradeViews: MutableMap<Player, Gui> = mutableMapOf()
 private const val NON_RANK_UPGRADE_COST_MULTIPLIER = 0.9
-private const val UPGRADE_ASCENSION_COST_MULTIPLIER_PER_ASCENSION = 1.25
-private val PERM_UPGRADE_SLOTS = listOf(10, 11, 12, 13, 14, 19, 20, 21, 22, 23, 28, 29, 30, 31, 32)
+private const val UPGRADE_ASCENSION_COST_MULTIPLIER_PER_ASCENSION = 1.4
+private val PERM_UPGRADE_SLOTS = listOf(10, 11, 12, 13, 14, 19, 20, 21, 22, 23, 24, 28, 29, 30, 31, 32, 33)
 
-enum class Currency { BALANCE }
+enum class Currency { BALANCE, TOKENS }
 
 data class Upgrade(
     val key: String,
@@ -136,20 +136,22 @@ class GenericUpgradeGui(
         }
 
         var purchases = 0
-        var totalCostSpent = 0L
+        var totalCoinsSpent = 0L
         val startingLevel = upgrade.level
         while (upgrade.level < upgrade.maxLevel) {
             val currentCost = getUpgradeCost(player, upgrade.key, upgrade.level)
             val hasEnough = when (upgrade.currency) {
                 Currency.BALANCE -> playerData.balance >= currentCost
+                Currency.TOKENS -> playerData.tokens >= currentCost
             }
 
             if (!hasEnough) break
 
             when (upgrade.currency) {
                 Currency.BALANCE -> playerData.balance -= currentCost
+                Currency.TOKENS -> playerData.tokens -= currentCost
             }
-            totalCostSpent += currentCost
+            totalCoinsSpent += currentCost
 
             upgrade.onUpgrade(player)
             upgrade.level = getPlayerLevel(player, upgrade.key)
@@ -160,7 +162,11 @@ class GenericUpgradeGui(
         }
 
         if (purchases == 0) {
-            player.sendMessage(TextUtil.toComponent("&cYou don't have enough Coins!"))
+            player.sendMessage(
+                TextUtil.toComponent(
+                    if (upgrade.currency == Currency.TOKENS) "&cYou don't have enough Tokens!" else "&cYou don't have enough Coins!"
+                )
+            )
             player.playSound(player.location, "block.note_block.bass", 1f, 1f)
             return false
         }
@@ -169,12 +175,19 @@ class GenericUpgradeGui(
         if (upgrade.key == "multiBreak") {
             TutorialManager.handleMultiBreakPurchased(player)
         }
+        if (upgrade.key == "sword") {
+            KitManager.refreshPvpSword(player)
+        }
         player.playSound(player.location, "entity.player.levelup", 1f, 1f)
         ScoreboardManager.updateBoard(player)
         val cleanDisplayName = stripLegacyCodes(upgrade.displayName)
+        val currencyName = when (upgrade.currency) {
+            Currency.BALANCE -> ItemManager.COIN_NAME_PLURAL
+            Currency.TOKENS -> ItemManager.TOKEN_NAME_PLURAL
+        }
         SessionTimelineManager.record(
             player,
-            "Upgraded $cleanDisplayName from level $startingLevel to ${upgrade.level} for ${TextUtil.formatNum(totalCostSpent)} ${ItemManager.COIN_NAME_PLURAL}"
+            "Upgraded $cleanDisplayName from level $startingLevel to ${upgrade.level} for ${TextUtil.formatNum(totalCoinsSpent)} $currencyName"
         )
 
         return true
@@ -202,7 +215,7 @@ class GenericUpgradeGui(
             if (upgrade.level >= upgrade.maxLevel) {
                 "&aStatus: &fMAXED"
             } else {
-                "${getCostColor(player, upgrade)}Next cost: &b${TextUtil.formatNum(upgrade.cost)} ${ItemManager.COIN_NAME_PLURAL}"
+                "${getCostColor(player, upgrade)}Next cost: &b${TextUtil.formatNum(upgrade.cost)} ${if (upgrade.currency == Currency.TOKENS) ItemManager.TOKEN_NAME_PLURAL else ItemManager.COIN_NAME_PLURAL}"
             }
         val scrollsAppliedLine = getScrollsAppliedLine(player, upgrade.key)
 
@@ -256,10 +269,10 @@ class GenericUpgradeGui(
     private fun createHeaderItem(player: Player): ItemStack =
         ItemStack(Material.NETHER_STAR).apply {
             editMeta { meta ->
-                meta.displayName(TextUtil.toComponent("&fUpgrade Station").decoration(TextDecoration.ITALIC, false))
+                meta.displayName(TextUtil.toComponent("&b&lPickaxe Upgrades").decoration(TextDecoration.ITALIC, false))
                 meta.lore(
                     listOf(
-                        "&7Push your mine further with permanent power.",
+                        "&7Push your mine further with rankup power.",
                         "",
                         "&7Left-click: &fBuy 1 level",
                         "&7Right-click: &fBuy max",
@@ -290,6 +303,7 @@ class GenericUpgradeGui(
         val playerData = DataStore.get(player.uniqueId)
         val affordable = when (upgrade.currency) {
             Currency.BALANCE -> playerData.balance >= upgrade.cost
+            Currency.TOKENS -> playerData.tokens >= upgrade.cost
         }
         return if (affordable) "&a" else "&c"
     }
@@ -310,6 +324,7 @@ class GenericUpgradeGui(
             "backpack" -> data.backpackLevel
             "sellMultiplier" -> data.sellMultiplierLevel
             "tokenFinder" -> data.tokenFinderLevel
+            "keyFinder" -> data.keyFinderLevel
             "jackpot" -> data.jackpotLevel
             "combo" -> data.comboLevel
             "procPower" -> data.procPowerLevel
@@ -318,6 +333,8 @@ class GenericUpgradeGui(
             "energyDrink" -> data.autoMinerEnergyDrinkLevel
             "autominerBackpack" -> data.autoMinerBackpackLevel
             "autominerLuck" -> data.autoMinerLuckLevel
+            "autominerPayout" -> data.autoMinerPayoutLevel
+            "sword" -> data.swordLevel
             "rank" -> data.rank
             else -> 0
         }
@@ -342,6 +359,7 @@ class GenericUpgradeGui(
             "backpack" -> ItemStack(Material.CHEST)
             "sellMultiplier" -> ItemStack(Material.GOLD_INGOT)
             "tokenFinder" -> ItemStack(Material.PRISMARINE_CRYSTALS)
+            "keyFinder" -> ItemStack(Material.TRIPWIRE_HOOK)
             "jackpot" -> ItemStack(Material.TOTEM_OF_UNDYING)
             "combo" -> ItemStack(Material.BLAZE_POWDER)
             "procPower" -> ItemStack(Material.NETHER_STAR)
@@ -350,6 +368,8 @@ class GenericUpgradeGui(
             "energyDrink" -> ItemStack(Material.POTION)
             "autominerBackpack" -> ItemStack(Material.CHEST)
             "autominerLuck" -> ItemStack(Material.RABBIT_FOOT)
+            "autominerPayout" -> ItemStack(Material.SUNFLOWER)
+            "sword" -> ItemStack(Material.NETHERITE_SWORD)
             else -> upgrade.displayItem
         }
 
@@ -358,27 +378,30 @@ class GenericUpgradeGui(
                 val tier = TierManager.getTier(upgrade.level)
                 tier?.let { "${it.color}&lT${upgrade.level} ${it.name}" } ?: "&cMissing Head"
             }
-            "multiBreak" -> "&bMulti-Break - Lvl ${upgrade.level}"
-            "oreBoost" -> "&bOre Booster - Lvl ${upgrade.level}"
-            "fortune" -> "&dFortune - Lvl ${upgrade.level}"
-            "excavator" -> "&7Excavator - Lvl ${upgrade.level}"
-            "lightning" -> "&eLightning - Lvl ${upgrade.level}"
-            "virtualJackhammer" -> "&6Jackhammer - Lvl ${upgrade.level}"
-            "excavatorEfficiency" -> "&7Excavator Efficiency - Lvl ${upgrade.level}"
-            "xpGain" -> "&aXP Gain - Lvl ${upgrade.level}"
-            "oreFrequency" -> "&2Ore Frequency - Lvl ${upgrade.level}"
-            "scrollFinder" -> "&dScroll Finder - Lvl ${upgrade.level}"
+            "multiBreak" -> "${ItemManager.getColoredPickaxeUpgradeName("multiBreak")} &7- Lvl ${upgrade.level}"
+            "oreBoost" -> "${ItemManager.getColoredPickaxeUpgradeName("oreBoost")} &7- Lvl ${upgrade.level}"
+            "fortune" -> "${ItemManager.getColoredPickaxeUpgradeName("fortune")} &7- Lvl ${upgrade.level}"
+            "excavator" -> "${ItemManager.getColoredPickaxeUpgradeName("excavator")} &7- Lvl ${upgrade.level}"
+            "lightning" -> "${ItemManager.getColoredPickaxeUpgradeName("lightning")} &7- Lvl ${upgrade.level}"
+            "virtualJackhammer" -> "${ItemManager.getColoredPickaxeUpgradeName("virtualJackhammer")} &7- Lvl ${upgrade.level}"
+            "excavatorEfficiency" -> "${ItemManager.getColoredPickaxeUpgradeName("excavatorEfficiency")} &7- Lvl ${upgrade.level}"
+            "xpGain" -> "${ItemManager.getColoredPickaxeUpgradeName("xpGain")} &7- Lvl ${upgrade.level}"
+            "oreFrequency" -> "${ItemManager.getColoredPickaxeUpgradeName("oreFrequency")} &7- Lvl ${upgrade.level}"
+            "scrollFinder" -> "${ItemManager.getColoredPickaxeUpgradeName("scrollFinder")} &7- Lvl ${upgrade.level}"
             "backpack" -> "&6Backpack Storage - Lvl ${upgrade.level}"
-            "sellMultiplier" -> "&6Sell Multiplier - Lvl ${upgrade.level}"
-            "tokenFinder" -> "&bToken Finder - Lvl ${upgrade.level}"
-            "jackpot" -> "&dJackpot - Lvl ${upgrade.level}"
-            "combo" -> "&6Combo Meter - Lvl ${upgrade.level}"
-            "procPower" -> "&fProc Power - Lvl ${upgrade.level}"
+            "sellMultiplier" -> "${ItemManager.getColoredPickaxeUpgradeName("sellMultiplier")} &7- Lvl ${upgrade.level}"
+            "tokenFinder" -> "${ItemManager.getColoredPickaxeUpgradeName("tokenFinder")} &7- Lvl ${upgrade.level}"
+            "keyFinder" -> "${ItemManager.getColoredPickaxeUpgradeName("keyFinder")} &7- Lvl ${upgrade.level}"
+            "jackpot" -> "${ItemManager.getColoredPickaxeUpgradeName("jackpot")} &7- Lvl ${upgrade.level}"
+            "combo" -> "${ItemManager.getColoredPickaxeUpgradeName("combo")} &7- Lvl ${upgrade.level}"
+            "procPower" -> "${ItemManager.getColoredPickaxeUpgradeName("procPower")} &7- Lvl ${upgrade.level}"
             "autominerFortune" -> "&bAuto Miner Fortune - Lvl ${upgrade.level}"
             "autominerEfficiency" -> "&eAuto Miner Efficiency - Lvl ${upgrade.level}"
             "energyDrink" -> "&6Energy Drink - Lvl ${upgrade.level}"
             "autominerBackpack" -> "&aAuto Miner Backpack - Lvl ${upgrade.level}"
             "autominerLuck" -> "&dAuto Miner Luck - Lvl ${upgrade.level}"
+            "autominerPayout" -> "&6Auto Miner Payout - Lvl ${upgrade.level}"
+            "sword" -> "&cSword Upgrade &7- Lvl ${upgrade.level}"
             else -> upgrade.displayName
         }
     }
@@ -399,26 +422,22 @@ private fun getUpgradeFlavor(key: String): String =
         "backpack" -> "Hold more loot before you need to sell."
         "sellMultiplier" -> "Make every backpack cashout hit harder."
         "tokenFinder" -> "Find bonus tokens while you mine."
-        "jackpot" -> "Spike random drops into huge wins."
+        "keyFinder" -> "Dig up random keys while you mine."
+        "jackpot" -> "Very rarely roll contraband drops while mining valuables."
         "combo" -> "Build momentum for bigger mining payouts."
-        "procPower" -> "Make your mining procs hit much harder."
+        "procPower" -> "Increase the proc chance of your core mining enchants."
         "autominerFortune" -> "Boost your autominer drop payout."
         "autominerEfficiency" -> "Let your autominer chew through more blocks."
         "energyDrink" -> "Keep the autominer earning while you're away."
         "autominerBackpack" -> "Store longer before your autominer caps out."
         "autominerLuck" -> "Roll better valuables for your autominer."
+        "sword" -> "Sharpen your PvP sword for danger-zone fights."
         else -> "Upgrade your progression."
     }
 
 private fun getScrollsAppliedLine(player: Player, key: String): String? {
     val data = DataStore.get(player.uniqueId)
-    val scrollType = when (key) {
-        "lightning" -> UpgradeScrollType.LIGHTNING
-        "virtualJackhammer" -> UpgradeScrollType.VIRTUAL_JACKHAMMER
-        "xpGain" -> UpgradeScrollType.XP_GAIN
-        "oreFrequency" -> UpgradeScrollType.ORE_FREQUENCY
-        else -> null
-    } ?: return null
+    val scrollType = UpgradeScrollType.fromUpgradeKey(key) ?: return null
 
     val applied = scrollType.currentExtraLevels(data)
     if (applied <= 0) return null
@@ -554,16 +573,24 @@ fun getDynamicUpgradeLore(player: Player, key: String, level: Int): List<String>
                 "&bToken roll: &f1-${currentAmount} &8-> &b1-${nextAmount}"
             )
         }
+        "keyFinder" -> {
+            val data = DataStore.get(player.uniqueId)
+            val currentChance = UpgradeFormulas.getKeyFinderChance(level, data.keyFinderMaxLevel) * 100
+            val nextChance = UpgradeFormulas.getKeyFinderChance((level + 1).coerceAtMost(data.keyFinderMaxLevel), data.keyFinderMaxLevel) * 100
+            listOf(
+                "&fMine blocks to find random keys.",
+                "&fKeys can roll &fCommon&7, &aUncommon&7, &6Rare&7, &5Epic&7, or &eLegendary&7.",
+                "&bFind chance: &f${formatFiveDecimals(currentChance)}% &8-> &b${formatFiveDecimals(nextChance)}%"
+            )
+        }
         "jackpot" -> {
             val data = DataStore.get(player.uniqueId)
             val currentChance = UpgradeFormulas.getJackpotChance(level, data.jackpotMaxLevel) * 100
             val nextChance = UpgradeFormulas.getJackpotChance((level + 1).coerceAtMost(data.jackpotMaxLevel), data.jackpotMaxLevel) * 100
-            val currentMultiplier = UpgradeFormulas.getJackpotMultiplier(level, data.jackpotMaxLevel)
-            val nextMultiplier = UpgradeFormulas.getJackpotMultiplier((level + 1).coerceAtMost(data.jackpotMaxLevel), data.jackpotMaxLevel)
             listOf(
-                "&fChance for valuable payouts to explode upward.",
-                "&bChance: &f${formatFiveDecimals(currentChance)}% &8-> &b${formatFiveDecimals(nextChance)}%",
-                "&bJackpot: &f${formatDecimal(currentMultiplier)}x &8-> &b${formatDecimal(nextMultiplier)}x"
+                "&fVery rarely swaps bonus ore into contraband loot.",
+                "&fCan drop things like gaps, cobwebs, wind charges, maces, or better.",
+                "&bChance: &f${formatFiveDecimals(currentChance)}% &8-> &b${formatFiveDecimals(nextChance)}%"
             )
         }
         "combo" -> {
@@ -581,23 +608,11 @@ fun getDynamicUpgradeLore(player: Player, key: String, level: Int): List<String>
         "procPower" -> {
             val data = DataStore.get(player.uniqueId)
             val nextLevel = (level + 1).coerceAtMost(data.procPowerMaxLevel)
-            val currentOreBoost = UpgradeFormulas.getProcPowerOreBoostMultiplier(level, data.procPowerMaxLevel)
-            val nextOreBoost = UpgradeFormulas.getProcPowerOreBoostMultiplier(nextLevel, data.procPowerMaxLevel)
-            val currentExcavator = UpgradeFormulas.getProcPowerExcavatorMultiplier(level, data.procPowerMaxLevel)
-            val nextExcavator = UpgradeFormulas.getProcPowerExcavatorMultiplier(nextLevel, data.procPowerMaxLevel)
-            val currentLightningRadius = UpgradeFormulas.getProcPowerLightningRadiusBonus(level, data.procPowerMaxLevel)
-            val nextLightningRadius = UpgradeFormulas.getProcPowerLightningRadiusBonus(nextLevel, data.procPowerMaxLevel)
-            val currentLightningTier = UpgradeFormulas.getProcPowerLightningTierBonus(level, data.procPowerMaxLevel)
-            val nextLightningTier = UpgradeFormulas.getProcPowerLightningTierBonus(nextLevel, data.procPowerMaxLevel)
-            val currentJackhammer = UpgradeFormulas.getProcPowerJackhammerMultiplier(level, data.procPowerMaxLevel)
-            val nextJackhammer = UpgradeFormulas.getProcPowerJackhammerMultiplier(nextLevel, data.procPowerMaxLevel)
+            val currentChance = UpgradeFormulas.getProcPowerChanceBonus(level, data.procPowerMaxLevel) * 100
+            val nextChance = UpgradeFormulas.getProcPowerChanceBonus(nextLevel, data.procPowerMaxLevel) * 100
             listOf(
-                "&fAmplify ore boost, excavator, lightning, and jackhammer.",
-                "&bOre Boost: &f${formatDecimal(currentOreBoost)}x &8-> &b${formatDecimal(nextOreBoost)}x",
-                "&bExcavator force: &f${formatDecimal(currentExcavator)}x &8-> &b${formatDecimal(nextExcavator)}x",
-                "&bLightning radius: &f+${currentLightningRadius} &8-> &b+${nextLightningRadius}",
-                "&bLightning tier skip: &f+${currentLightningTier} &8-> &b+${nextLightningTier}",
-                "&bJackhammer payout: &f${formatDecimal(currentJackhammer)}x &8-> &b${formatDecimal(nextJackhammer)}x"
+                "&fAdds flat proc chance to Ore Boost, Excavator, Lightning, and Jackhammer.",
+                "&bProc chance bonus: &f${formatDecimal(currentChance)}% &8-> &b${formatDecimal(nextChance)}%"
             )
         }
         "fortune" -> {
@@ -624,8 +639,8 @@ fun getDynamicUpgradeLore(player: Player, key: String, level: Int): List<String>
             listOf("&fKeep your autominer productive offline.", "&bOffline pace: &f${formatDecimal(current)}% &8-> &b${formatDecimal(next)}%")
         }
         "autominerBackpack" -> {
-            val current = (level.coerceAtLeast(1).toLong() * 10_000L).coerceAtMost(2_500_000L)
-            val next = ((level + 1).coerceAtLeast(1).toLong() * 10_000L).coerceAtMost(2_500_000L)
+            val current = (level.coerceAtLeast(1).toLong() * 10_000L).coerceAtMost(5_000_000L)
+            val next = ((level + 1).coerceAtLeast(1).toLong() * 10_000L).coerceAtMost(5_000_000L)
             listOf("&fIncrease autominer storage capacity.", "&bCapacity: &f${TextUtil.formatNum(current)} &8-> &b${TextUtil.formatNum(next)}")
         }
         "autominerLuck" -> {
@@ -634,6 +649,25 @@ fun getDynamicUpgradeLore(player: Player, key: String, level: Int): List<String>
             listOf(
                 "&fImprove autominer valuable rolls.",
                 "&bMine weight: &f${formatDecimal(current)}x &8-> &b${formatDecimal(next)}x"
+            )
+        }
+        "autominerPayout" -> {
+            val current = UpgradeFormulas.getAutoMinerPayoutChance(level) * 100
+            val next = UpgradeFormulas.getAutoMinerPayoutChance((level + 1).coerceAtMost(LevelManager.autoMinerPayoutMaxLevel)) * 100
+            listOf(
+                "&fRoll a lucky autominer payout when collecting.",
+                "&fIf lucky, collected autominer loot becomes &62x",
+                "&bLucky chance: &f${formatDecimal(current)}% &8-> &b${formatDecimal(next)}%"
+            )
+        }
+        "sword" -> {
+            val data = DataStore.get(player.uniqueId)
+            val currentTier = (data.rebirth + level).coerceAtLeast(1)
+            val nextTier = (data.rebirth + (level + 1).coerceAtMost(data.swordMaxLevel)).coerceAtLeast(1)
+            listOf(
+                "&fUpgrade your PvP sword with tokens.",
+                "&fApplies when you enter danger-zone PvP mode.",
+                "&bSword tier: &f$currentTier &8-> &b$nextTier"
             )
         }
         else -> listOf()
@@ -657,6 +691,7 @@ private fun getUpgradeCost(player: Player, key: String, currentLevel: Int): Long
         "backpack" -> getDiscountedUpgradeCost(player, LevelManager.upgradeBackpackCosts[nextLevel])
         "sellMultiplier" -> getDiscountedUpgradeCost(player, LevelManager.upgradeSellMultiplierCosts[nextLevel])
         "tokenFinder" -> getDiscountedUpgradeCost(player, LevelManager.upgradeTokenFinderCosts[nextLevel])
+        "keyFinder" -> getDiscountedUpgradeCost(player, LevelManager.upgradeKeyFinderCosts[nextLevel])
         "jackpot" -> getDiscountedUpgradeCost(player, LevelManager.upgradeJackpotCosts[nextLevel])
         "combo" -> getDiscountedUpgradeCost(player, LevelManager.upgradeComboCosts[nextLevel])
         "procPower" -> getDiscountedUpgradeCost(player, LevelManager.upgradeProcPowerCosts[nextLevel])
@@ -665,6 +700,8 @@ private fun getUpgradeCost(player: Player, key: String, currentLevel: Int): Long
         "energyDrink" -> getDiscountedUpgradeCost(player, LevelManager.upgradeAutoMinerEnergyDrinkCosts[nextLevel])
         "autominerBackpack" -> getDiscountedUpgradeCost(player, LevelManager.upgradeAutoMinerBackpackCosts[nextLevel])
         "autominerLuck" -> getDiscountedUpgradeCost(player, LevelManager.upgradeAutoMinerLuckCosts[nextLevel])
+        "autominerPayout" -> getDiscountedUpgradeCost(player, LevelManager.upgradeAutoMinerPayoutCosts[nextLevel])
+        "sword" -> LevelManager.upgradeSwordCosts[nextLevel] ?: 0
         else -> 0
     }
 }
@@ -738,7 +775,7 @@ fun openPermUpgradeGui(player: Player) {
             getUpgradeCost(player, "oreFrequency", data.oreFrequencyLevel), Currency.BALANCE,
             ItemStack(Material.EMERALD),
             getDynamicUpgradeLore(player, "oreFrequency", data.oreFrequencyLevel),
-            "&2Ore Frequency") { p -> DataStore.get(p.uniqueId).oreFrequencyLevel += 1 },
+            "&2Mine Richness") { p -> DataStore.get(p.uniqueId).oreFrequencyLevel += 1 },
 
         Upgrade("scrollFinder", data.scrollFinderLevel, data.scrollFinderMaxLevel,
             getUpgradeCost(player, "scrollFinder", data.scrollFinderLevel), Currency.BALANCE,
@@ -758,6 +795,12 @@ fun openPermUpgradeGui(player: Player) {
             getDynamicUpgradeLore(player, "tokenFinder", data.tokenFinderLevel),
             "&bToken Finder") { p -> DataStore.get(p.uniqueId).tokenFinderLevel += 1 },
 
+        Upgrade("keyFinder", data.keyFinderLevel, data.keyFinderMaxLevel,
+            getUpgradeCost(player, "keyFinder", data.keyFinderLevel), Currency.BALANCE,
+            ItemStack(Material.TRIPWIRE_HOOK),
+            getDynamicUpgradeLore(player, "keyFinder", data.keyFinderLevel),
+            "&fKey Finder") { p -> DataStore.get(p.uniqueId).keyFinderLevel += 1 },
+
         Upgrade("jackpot", data.jackpotLevel, data.jackpotMaxLevel,
             getUpgradeCost(player, "jackpot", data.jackpotLevel), Currency.BALANCE,
             ItemStack(Material.TOTEM_OF_UNDYING),
@@ -774,10 +817,16 @@ fun openPermUpgradeGui(player: Player) {
             getUpgradeCost(player, "procPower", data.procPowerLevel), Currency.BALANCE,
             ItemStack(Material.NETHER_STAR),
             getDynamicUpgradeLore(player, "procPower", data.procPowerLevel),
-            "&fProc Power") { p -> DataStore.get(p.uniqueId).procPowerLevel += 1 }
+            "&fProc Power") { p -> DataStore.get(p.uniqueId).procPowerLevel += 1 },
+
+        Upgrade("sword", data.swordLevel, data.swordMaxLevel,
+            getUpgradeCost(player, "sword", data.swordLevel), Currency.TOKENS,
+            ItemStack(Material.NETHERITE_SWORD),
+            getDynamicUpgradeLore(player, "sword", data.swordLevel),
+            "&cSword Upgrade") { p -> DataStore.get(p.uniqueId).swordLevel += 1 }
     )
 
-    val gui = GenericUpgradeGui("&8ᴘᴇʀᴍᴀɴᴇɴᴛ &bᴜᴘɢʀᴀᴅᴇs", permUpgrades)
+    val gui = GenericUpgradeGui("         &bᴘɪᴄᴋᴀxᴇ ᴜᴘɢʀᴀᴅᴇs", permUpgrades)
     openGuis[player] = gui
     gui.open(player)
 }
@@ -835,7 +884,17 @@ fun openAutoMinerUpgradeGui(player: Player) {
             ItemStack(Material.RABBIT_FOOT),
             getDynamicUpgradeLore(player, "autominerLuck", data.autoMinerLuckLevel),
             "&dAuto Miner Luck"
-        ) { p -> DataStore.get(p.uniqueId).autoMinerLuckLevel += 1 }
+        ) { p -> DataStore.get(p.uniqueId).autoMinerLuckLevel += 1 },
+        Upgrade(
+            "autominerPayout",
+            data.autoMinerPayoutLevel,
+            data.autoMinerPayoutMaxLevel,
+            getUpgradeCost(player, "autominerPayout", data.autoMinerPayoutLevel),
+            Currency.BALANCE,
+            ItemStack(Material.SUNFLOWER),
+            getDynamicUpgradeLore(player, "autominerPayout", data.autoMinerPayoutLevel),
+            "&6Auto Miner Payout"
+        ) { p -> DataStore.get(p.uniqueId).autoMinerPayoutLevel += 1 }
     )
 
     val gui = GenericUpgradeGui("&8ᴀᴜᴛᴏ ᴍɪɴᴇʀ &bᴜᴘɢʀᴀᴅᴇs", upgrades)

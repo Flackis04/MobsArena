@@ -48,6 +48,7 @@ class OreIndexGui : Listener {
     private fun setValuableSlot(player: Player, gui: Gui, slot: Int, item: Material, color: String) {
         val data = DataStore.get(player.uniqueId)
         val totalCollected = data.getCollectedAmount(item)
+        val discovered = totalCollected > 0L
         val masteryLevel = if (totalCollected > 0L) MasteryManager.getValuableMasteryLevel(data, item) else 0
         val sellValue = if (totalCollected > 0L) MasteryManager.getValuableSellValue(data, item) else StorageManager.getBaseSellValue(item) ?: 0L
         val nextMasteryRequirement = if (masteryLevel < 7) {
@@ -58,11 +59,7 @@ class OreIndexGui : Listener {
         val maxMasteryRequirement = MasteryManager.getRequiredValuableBlocksMined(item, 7)
         val stack = if (totalCollected > 0L) ItemStack(item) else ItemStack(Material.STONE_BUTTON)
         stack.editMeta { meta ->
-            meta.displayName(
-                TextUtil.toComponent("${color}&l${item.name.replace('_', ' ')}")
-                    .asComponent()
-                    .decoration(TextDecoration.ITALIC, false)
-            )
+            meta.displayName(MineManager.getValuableDisplayName(item, discovered))
             val lore = mutableListOf(
                 TextUtil.toComponent("&7Collected Ever: &b${TextUtil.formatNum(totalCollected)}")
                     .asComponent()
@@ -87,7 +84,8 @@ class OreIndexGui : Listener {
                     .asComponent()
                     .decoration(TextDecoration.ITALIC, false)
             } else {
-                lore += TextUtil.toComponent("&7Mine this valuable once to unlock mastery")
+                lore.clear()
+                lore += TextUtil.toComponent("&7Not discovered yet")
                     .asComponent()
                     .decoration(TextDecoration.ITALIC, false)
             }

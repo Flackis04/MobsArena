@@ -37,7 +37,7 @@ object MineStatusHologram {
             val ownerName = Bukkit.getOfflinePlayer(mine.ownerId).name ?: "Unknown"
             val ownerData = DataStore.get(mine.ownerId)
             val ownerRank = formatDisplayedRank(ownerData)
-            val netMineWeight = String.format("%.2f", MineManager.getNetMineWeightMultiplier(mine.ownerId))
+            val mineRichness = String.format("%.2f", MineManager.getMineRichnessMultiplier(mine.ownerId))
             val totalBlocksMined = TextUtil.formatNum(ownerData.blocksMined)
             val titleId = "${mine.ownerId}:title"
             val ownerId = "${mine.ownerId}:owner"
@@ -65,7 +65,7 @@ object MineStatusHologram {
             title.text(TextUtil.toComponent("<#6EF8FF>⛏ &fMine Status <#6EF8FF>⛏"))
             owner.text(TextUtil.toComponent("<#A89064>Mine Owner: <#6EF8FF>$ownerName <#6C6458>| <#A89064>Rank: <#6EF8FF>$ownerRank"))
             blocks.text(TextUtil.toComponent("<#A89064>Total Blocks Mined: <#6EF8FF>$totalBlocksMined"))
-            weight.text(TextUtil.toComponent("<#A89064>Net Mine Weight: <#6EF8FF>${netMineWeight}x"))
+            weight.text(TextUtil.toComponent("<#A89064>Mine Richness: <#6EF8FF>${mineRichness}x"))
             progress.text(
                 TextUtil.toComponent(
                     "<#A89064>Mined: <#6EF8FF>${MineManager.getClearedPercentText(mine.ownerId)} <#6C6458>| <#A89064>Reset Threshold: <#FFFFFF>4.0%"

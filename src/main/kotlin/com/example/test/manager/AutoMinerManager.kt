@@ -6,11 +6,20 @@ import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
+import kotlin.random.Random
 
 object AutoMinerManager {
     private const val TICK_INTERVAL_TICKS = 20L
     private const val BACKPACK_ITEMS_PER_LEVEL = 10_000L
+    private const val MAX_BACKPACK_CAPACITY = 5_000_000L
     private val openBackpackViewers = mutableSetOf<UUID>()
+
+    data class CollectResult(
+        val totalItems: Long,
+        val totalValue: Long,
+        val payoutLucky: Boolean,
+        val payoutMultiplier: Int
+    )
 
     fun init() {
         Bukkit.getScheduler().runTaskTimer(
@@ -76,7 +85,7 @@ object AutoMinerManager {
 
     fun getBackpackCapacity(data: PlayerData): Long =
         (data.autoMinerBackpackLevel.coerceAtLeast(1).toLong() * BACKPACK_ITEMS_PER_LEVEL)
-            .coerceAtMost(2_500_000L)
+            .coerceAtMost(MAX_BACKPACK_CAPACITY)
 
     fun getStoredItemCount(player: Player): Long = getContents(player).sumOf { it.amount.toLong() }
 
@@ -86,21 +95,25 @@ object AutoMinerManager {
 
     fun getProcessingAttempts(level: Int): Int = UpgradeFormulas.getAutoMinerProcessingAttempts(level)
 
-    fun collectAll(player: Player): StorageManager.SellResult {
+    fun collectAll(player: Player): CollectResult {
         val contents = getContents(player)
         var totalItems = 0L
+        val data = DataStore.get(player.uniqueId)
+        val payoutLucky = Random.nextDouble() <= UpgradeFormulas.getAutoMinerPayoutChance(data.autoMinerPayoutLevel)
+        val payoutMultiplier = if (payoutLucky) 2 else 1
 
         for (item in contents) {
             if (item.type == Material.AIR || item.amount <= 0) continue
-            totalItems += item.amount.toLong()
-            StorageManager.addDrop(player, item.clone())
+            val payoutAmount = item.amount * payoutMultiplier
+            totalItems += payoutAmount.toLong()
+            StorageManager.addDrop(player, item.clone().apply { amount = payoutAmount })
         }
 
         if (totalItems > 0L) {
             setContents(player, MutableList(StorageManager.capacity) { ItemStack(Material.AIR) })
         }
 
-        return StorageManager.SellResult(totalItems, 0L)
+        return CollectResult(totalItems, 0L, payoutLucky, payoutMultiplier)
     }
 
     fun openBackpack(player: Player) {

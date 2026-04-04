@@ -1,0 +1,16 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+finishedTutorial: true
+startedAt: '2026-04-03 11:40:41'
+endedAt: '2026-04-03 11:41:20'
+logoffSpot:
+  world: mine
+  x: -8.813762683497478
+  y: 53.0
+  z: -75.22518345306666
+  yaw: -74.85919
+  pitch: 24.546787
+timeline:
+- 2026-04-03 11:40:41 | Joined at mine @ 0.5, 53.0, -99.5
+- '2026-04-03 11:40:46 | Command: /gamemode creative'
+- 2026-04-03 11:41:20 | Logged off at mine @ -8.8, 53.0, -75.2

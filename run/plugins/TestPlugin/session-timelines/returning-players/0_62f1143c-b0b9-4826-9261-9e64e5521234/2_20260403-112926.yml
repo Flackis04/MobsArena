@@ -1,0 +1,20 @@
+playerId: 62f1143c-b0b9-4826-9261-9e64e5521234
+playerName: Flackis04
+finishedTutorial: true
+startedAt: '2026-04-03 11:29:26'
+endedAt: '2026-04-03 11:33:51'
+logoffSpot:
+  world: mine
+  x: 29.080987055661915
+  y: 67.53292827534491
+  z: -47.83136473417151
+  yaw: 49.628796
+  pitch: 17.938168
+timeline:
+- 2026-04-03 11:29:26 | Joined at mine @ 0.5, 53.0, -99.5
+- '2026-04-03 11:29:33 | Command: /gamemode creative'
+- 2026-04-03 11:33:46 | Broke BARRIER at mine @ 23.0, 65.0, -64.0
+- 2026-04-03 11:33:46 | Broke BARRIER at mine @ 24.0, 66.0, -64.0
+- 2026-04-03 11:33:47 | Broke BARRIER at mine @ 24.0, 65.0, -64.0
+- 2026-04-03 11:33:47 | Broke DEEPSLATE at mine @ 24.0, 64.0, -62.0
+- 2026-04-03 11:33:51 | Logged off at mine @ 29.1, 67.5, -47.8

@@ -13,6 +13,12 @@ import org.joml.Vector3f
 import java.io.File
 
 object StatsManager {
+    data class LeaderboardEntry(val name: String, val value: String)
+    data class LeaderboardStanding(
+        val entries: List<LeaderboardEntry>,
+        val viewerPlace: Int?,
+        val viewerValue: String?
+    )
 
     private const val WALL_TAG = "wall_of_fame"
 
@@ -54,88 +60,32 @@ object StatsManager {
     fun refreshWallOfFame(baseLoc: Location) {
         clearDisplays()
 
-        val headerScale = 1.8
-        val listScale = 1.0
+        val headerScale = 2.75
+        val listScale = 1.5
 
         // Titles
-        spawnTextDisplay(offset(baseLoc, 0.0, 2.0, 0.0), 5.0, Color.fromARGB(0, 0, 0, 0), "&7Wall of Fame")
-        spawnTextDisplay(offset(baseLoc, 0.0, 1.35, 0.0), 2.0, Color.fromARGB(0, 0, 0, 0), "<#fc1919>⏱ ʀᴇsᴇᴛs ᴇᴠᴇʀʏ 1 ᴍɪɴ")
-
-        // Headers
-        val headers = listOf(
-            "&9⛏ ʙʟᴏᴄᴋs ᴍɪɴᴇᴅ",
-            "<#FFD700>💰 ᴄᴏɪɴs",
-            "&d♛ ʀᴀɴᴋ",
-            "&a✦ ʟᴇᴠᴇʟ",
-            "&3⌛ ᴘʟᴀʏᴛɪᴍᴇ",
-            "<#FF7AE0>⚔ ᴄʟᴀɴᴛᴏᴘ"
+        spawnTextDisplay(offset(baseLoc, 0.0, 2.0, 0.0), 7.25, Color.fromARGB(0, 0, 0, 0), "&7Wall of Fame")
+        spawnTextDisplay(offset(baseLoc, 0.0, 1.35, 0.0), 3.0, Color.fromARGB(0, 0, 0, 0), "<#fc1919>⏱ ʀᴇsᴇᴛs ᴇᴠᴇʀʏ 1 ᴍɪɴ")
+        val categories = listOf(
+            "&6💰 ᴄᴏɪɴs" to "balance",
+            "&d♛ ʀᴀɴᴋ" to "rank"
         )
-
-        val columnStep = 3.8
-        val startOffset = -((headers.size - 1) * columnStep) / 2.0
-        val yOffset = 0.0
-
-        headers.forEachIndexed { index, text ->
-            val loc = offset(baseLoc, startOffset + index * columnStep, yOffset, 0.0)
-            spawnTextDisplay(loc, headerScale, Color.fromARGB(0, 0, 0, 0), text)
+        val columnStep = 6.0
+        val startOffset = -((categories.size - 1) * columnStep) / 2.0
+        categories.forEachIndexed { index, (header, stat) ->
+            val loc = offset(baseLoc, startOffset + index * columnStep, 0.0, 0.0)
+            spawnTextDisplay(loc, headerScale, Color.fromARGB(0, 0, 0, 0), header)
+            listTopPlayers(stat, loc.clone(), listScale)
         }
-
-        // List top players
-        listTopPlayers("playtime", offset(baseLoc, startOffset + 4 * columnStep, yOffset, 0.0), listScale)
-        listTopPlayers("blocksMined", offset(baseLoc, startOffset + 0 * columnStep, yOffset, 0.0), listScale)
-        listTopPlayers("rank", offset(baseLoc, startOffset + 2 * columnStep, yOffset, 0.0), listScale)
-        listTopPlayers("balance", offset(baseLoc, startOffset + 1 * columnStep, yOffset, 0.0), listScale)
-        listTopPlayers("level", offset(baseLoc, startOffset + 3 * columnStep, yOffset, 0.0), listScale)
-        listTopClans(offset(baseLoc, startOffset + 5 * columnStep, yOffset, 0.0), listScale)
+        spawnTextDisplay(offset(baseLoc, 0.0, -5.8, 0.0), 2.0, Color.fromARGB(0, 0, 0, 0), "&7/leaderboards for more")
 
     }
 
     private fun listTopPlayers(stat: String, loc: Location, scale: Double) {
-        val sorted = if (stat == "rank") {
-            DataStore.all().sortedWith(
-                compareByDescending<Pair<java.util.UUID, PlayerData>> { it.second.ascension }
-                    .thenByDescending { it.second.rebirth }
-                    .thenByDescending { it.second.rank }
-            )
-        } else {
-            DataStore.all().sortedByDescending { (_, data) ->
-                when (stat) {
-                    "kills" -> data.kills
-                    "deaths" -> data.deaths
-                    "blocksMined" -> data.blocksMined
-                    "balance" -> data.balance
-                    "level" -> data.level.toLong()
-                    "playtime" -> data.playtimeSeconds
-                    else -> 0
-                }
-            }
-        }
-
-        var rank = 0
-        for ((uuid, data) in sorted) {
-            if (rank >= 10) break
-
-            val name = Bukkit.getOfflinePlayer(uuid).name ?: continue
-            if (name == "<none>" || name == "Player" || dupers.contains(name)) continue
-
-            rank++
-            loc.subtract(0.0, 0.4, 0.0)
-
-            val value = when (stat) {
-                "playtime" -> TextUtil.formatPlaytime(data.playtimeSeconds)
-                "rank" -> formatDisplayedRank(data)
-                "level" -> data.level.toString()
-                else -> TextUtil.formatNum(
-                    when (stat) {
-                        "kills" -> data.kills
-                        "deaths" -> data.deaths
-                        "blocksMined" -> data.blocksMined
-                        "balance" -> data.balance
-                        else -> 0
-                    }
-                )
-            }
-
+        val standing = getPlayerLeaderboard(stat, null)
+        standing.entries.forEachIndexed { index, entry ->
+            loc.subtract(0.0, 0.47, 0.0)
+            val rank = index + 1
             val rankPrefix = when (rank) {
                 1 -> "<#FFD700>1."
                 2 -> "<#C0C0C0>2."
@@ -147,18 +97,16 @@ object StatsManager {
                 loc.clone(),
                 scale,
                 Color.fromARGB(0, 0, 0, 0),
-                "$rankPrefix &7$name - &b$value"
+                "$rankPrefix &7${entry.name} - &b${entry.value}"
             )
         }
     }
 
     private fun listTopClans(loc: Location, scale: Double) {
-        var rank = 0
-        for (clan in ClanManager.getTopClans()) {
-            if (rank >= 10) break
-            rank++
-            loc.subtract(0.0, 0.4, 0.0)
-
+        val standing = getClanLeaderboard(null)
+        standing.entries.forEachIndexed { index, entry ->
+            loc.subtract(0.0, 0.47, 0.0)
+            val rank = index + 1
             val rankPrefix = when (rank) {
                 1 -> "<#FFD700>1."
                 2 -> "<#C0C0C0>2."
@@ -170,10 +118,79 @@ object StatsManager {
                 loc.clone(),
                 scale,
                 Color.fromARGB(0, 0, 0, 0),
-                "$rankPrefix &7${clan.name} - &bL${ClanManager.getClanLevel(clan)}"
+                "$rankPrefix &7${entry.name} - &b${entry.value}"
             )
         }
     }
+
+    fun getPlayerLeaderboard(stat: String, viewer: org.bukkit.OfflinePlayer?): LeaderboardStanding {
+        val entries = getSortedPlayerEntries(stat)
+        val topEntries = entries.take(10).map { LeaderboardEntry(it.name, formatPlayerStatValue(stat, it.data)) }
+        val viewerEntry = viewer?.uniqueId?.let { viewerId ->
+            entries.indexOfFirst { it.uuid == viewerId }.takeIf { it >= 0 }?.let { index ->
+                val entry = entries[index]
+                index + 1 to formatPlayerStatValue(stat, entry.data)
+            }
+        }
+        return LeaderboardStanding(topEntries, viewerEntry?.first, viewerEntry?.second)
+    }
+
+    fun getClanLeaderboard(viewer: org.bukkit.OfflinePlayer?): LeaderboardStanding {
+        val entries = ClanManager.getTopClans().mapIndexed { index, clan ->
+            Triple(index + 1, clan.name, "L${ClanManager.getClanLevel(clan)}")
+        }
+        val topEntries = entries.take(10).map { LeaderboardEntry(it.second, it.third) }
+        val viewerClanName = viewer?.uniqueId?.let { ClanManager.getClanFor(it)?.name }
+        val viewerEntry = if (viewerClanName != null) {
+            entries.firstOrNull { it.second.equals(viewerClanName, ignoreCase = true) }
+        } else {
+            null
+        }
+        return LeaderboardStanding(topEntries, viewerEntry?.first, viewerEntry?.third)
+    }
+
+    private data class RankedPlayerEntry(
+        val uuid: java.util.UUID,
+        val name: String,
+        val data: PlayerData
+    )
+
+    private fun getSortedPlayerEntries(stat: String): List<RankedPlayerEntry> {
+        val validEntries = DataStore.all().mapNotNull { (uuid, data) ->
+            val name = Bukkit.getOfflinePlayer(uuid).name ?: return@mapNotNull null
+            if (name == "<none>" || name == "Player" || dupers.contains(name)) return@mapNotNull null
+            RankedPlayerEntry(uuid, name, data)
+        }
+        return if (stat == "rank") {
+            validEntries.sortedWith(
+                compareByDescending<RankedPlayerEntry> { it.data.ascension }
+                    .thenByDescending { it.data.rebirth }
+                    .thenByDescending { it.data.rank }
+            )
+        } else {
+            validEntries.sortedByDescending { getNumericPlayerStatValue(stat, it.data) }
+        }
+    }
+
+    private fun getNumericPlayerStatValue(stat: String, data: PlayerData): Long =
+        when (stat) {
+            "kills" -> data.kills
+            "deaths" -> data.deaths
+            "blocksMined" -> data.blocksMined
+            "balance" -> data.balance
+            "tokens" -> data.tokens
+            "level" -> data.level.toLong()
+            "playtime" -> data.playtimeSeconds
+            else -> 0
+        }
+
+    private fun formatPlayerStatValue(stat: String, data: PlayerData): String =
+        when (stat) {
+            "playtime" -> TextUtil.formatPlaytime(data.playtimeSeconds)
+            "rank" -> formatDisplayedRank(data)
+            "level" -> data.level.toString()
+            else -> TextUtil.formatNum(getNumericPlayerStatValue(stat, data))
+        }
 
     private fun spawnTextDisplay(loc: Location, scale: Double, color: Color, text: String) {
         val display = loc.world?.spawn(loc, TextDisplay::class.java) ?: return

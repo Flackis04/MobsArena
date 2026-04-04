@@ -18,13 +18,19 @@ class PickaxeListener : Listener {
     fun onBlockBreak(event: BlockBreakEvent) {
         val player = event.player
         if (player.world.name != "mine") return
+        if (DangerZoneCubeManager.tryBreakCube(player, event.block)) {
+            event.isCancelled = true
+            return
+        }
         if (!MineManager.containsMine(event.block.location) && !player.hasPermission("command.dev")) {
             event.isCancelled = true
             return
         }
         if (!player.hasPermission("command.dev") && !MineManager.canBreakMineBlock(player, event.block.location)) {
             event.isCancelled = true
-            TextUtil.showTitle(player, "&cTrying to steal?", "&7Miner Rank required", 0, 40, 10)
+            if (!MineManager.isProtectedMineBorder(event.block.location)) {
+                TextUtil.showTitle(player, "&cTrying to steal?", "&7Miner Rank required", 0, 40, 10)
+            }
             return
         }
 
@@ -44,17 +50,22 @@ class PickaxeListener : Listener {
         val extraBlockResult = BlockRemovalManager.handleBlockRemoval(
             player = player,
             block = block,
-            blockQuantity = getMultiBreakBlockQuantity(
-                data.multiBreakLevel,
-                ItemManager.isProcBooster(player.inventory.itemInOffHand),
-                data.multiBreakMaxLevel,
-                0.0,
-                data.excavatorActive,
-                ceil(
-                    data.excavatorEfficiencyLevel *
-                        UpgradeFormulas.getProcPowerExcavatorMultiplier(data.procPowerLevel, data.procPowerMaxLevel)
-                ).toInt()
-            )
+            blockQuantity = if (!UpgradeToggleManager.isEnabled(data, "multiBreak")) {
+                0.0
+            } else {
+                getMultiBreakBlockQuantity(
+                    UpgradeToggleManager.getEffectiveLevel(data, "multiBreak", data.multiBreakLevel),
+                    ItemManager.isProcBooster(player.inventory.itemInOffHand),
+                    data.multiBreakMaxLevel,
+                    0.0,
+                    data.excavatorActive,
+                    if (UpgradeToggleManager.isEnabled(data, "excavatorEfficiency")) {
+                        ceil(data.excavatorEfficiencyLevel.toDouble()).toInt()
+                    } else {
+                        1
+                    }
+                )
+            }
         )
 
         val minedMaterials = listOf(context.actualType) + extraBlockResult.materialsMined
@@ -65,20 +76,27 @@ class PickaxeListener : Listener {
             context.originLoc
         )
         val tokensEarned = RetentionUpgradeManager.tryAwardTokens(player, minedMaterials)
+        val keysFound = RetentionUpgradeManager.tryAwardKeys(player, minedMaterials)
 
-        updateMiningProgress(player, data, extraBlockResult.totalBlocksMined, context.actualType, tokensEarned)
+        updateMiningProgress(player, data, extraBlockResult.totalBlocksMined, context.actualType, tokensEarned, keysFound)
     }
 
     private fun activateMiningProcs(player: Player, data: PlayerData) {
+        val procPowerBonus = UpgradeToggleManager.getProcPowerBonus(data)
         tryActivateTimedProc(
             player = player,
             key = "oreBoost",
             isActive = data.oreBoostActive,
-            activationChance = MineManager.applyProcMultiplier(
-                UpgradeFormulas.getOreBoostChance(data.oreBoostLevel, data.oreBoostMaxLevel, 0.0) +
-                    MasteryManager.getActivationChanceBonus(data, "oreBoost"),
-                player
-            ),
+            activationChance = if (!UpgradeToggleManager.isEnabled(data, "oreBoost")) {
+                0.0
+            } else {
+                MineManager.applyProcMultiplier(
+                    UpgradeFormulas.getOreBoostChance(data.oreBoostLevel, data.oreBoostMaxLevel, 0.0) +
+                        procPowerBonus +
+                        MasteryManager.getActivationChanceBonus(data, "oreBoost"),
+                    player
+                )
+            },
             activationMessage = "&dOre Boost activated for 5 seconds!",
             durationTicks = 20L * 5L,
             activate = { data.oreBoostActive = true },
@@ -89,11 +107,16 @@ class PickaxeListener : Listener {
             player = player,
             key = "excavator",
             isActive = data.excavatorActive,
-            activationChance = MineManager.applyProcMultiplier(
-                UpgradeFormulas.getExcavatorChance(data.excavatorLevel, data.excavatorMaxLevel, 0.0) +
-                    MasteryManager.getActivationChanceBonus(data, "excavator"),
-                player
-            ),
+            activationChance = if (!UpgradeToggleManager.isEnabled(data, "excavator")) {
+                0.0
+            } else {
+                MineManager.applyProcMultiplier(
+                    UpgradeFormulas.getExcavatorChance(data.excavatorLevel, data.excavatorMaxLevel, 0.0) +
+                        procPowerBonus +
+                        MasteryManager.getActivationChanceBonus(data, "excavator"),
+                    player
+                )
+            },
             activationMessage = "&dExcavator activated for 15 seconds!",
             durationTicks = 20L * 15L,
             activate = { data.excavatorActive = true },
@@ -126,7 +149,12 @@ class PickaxeListener : Listener {
         val originLoc = block.location
         val actualType = revealStoredOreIfNeeded(block)
         val blockData = block.blockData.clone()
-        val drops = resolveDrops(player, block, actualType, data.fortuneLevel)
+        val drops = resolveDrops(
+            player,
+            block,
+            actualType,
+            UpgradeToggleManager.getEffectiveLevel(data, "fortune", data.fortuneLevel)
+        )
         return BreakContext(
             player = player,
             block = block,
@@ -147,15 +175,14 @@ class PickaxeListener : Listener {
     }
 
     private fun resolveDrops(player: Player, block: Block, actualType: Material, fortuneLevel: Int): List<ItemStack> {
+        val data = DataStore.get(player.uniqueId)
         if (actualType in MineManager.valuables) {
-            val data = DataStore.get(player.uniqueId)
-            return MineManager.getConfiguredDrops(actualType, fortuneLevel, data.fortuneMaxLevel, 0.0)
+            return MineManager.getConfiguredDrops(actualType, fortuneLevel, data, data.fortuneMaxLevel, 0.0)
         }
 
         return block.getDrops(ItemStack(player.inventory.itemInMainHand.type), player).map { drop ->
-            val data = DataStore.get(player.uniqueId)
             drop.clone().apply {
-                amount = BlockRemovalManager.rollScaledAmount(amount, getFortuneMultiplier(actualType, fortuneLevel, data.fortuneMaxLevel, 0.0))
+                amount = BlockRemovalManager.rollScaledAmount(amount, BlockRemovalManager.getFortuneMultiplier(actualType, fortuneLevel, data, data.fortuneMaxLevel, 0.0))
             }
         }
     }
@@ -197,7 +224,14 @@ class PickaxeListener : Listener {
         )
     }
 
-    private fun updateMiningProgress(player: Player, data: PlayerData, blocksMined: Int, actualType: Material, tokensEarned: Long) {
+    private fun updateMiningProgress(
+        player: Player,
+        data: PlayerData,
+        blocksMined: Int,
+        actualType: Material,
+        tokensEarned: Long,
+        keysFound: List<KeyRarity>
+    ) {
         if (actualType in MineManager.mineableBlocks) {
             val mineOwnerId = MineManager.getMineOwnerAt(player.location) ?: player.uniqueId
             MineManager.recordBlocksMined(mineOwnerId)
@@ -209,6 +243,14 @@ class PickaxeListener : Listener {
         actionBarParts += RetentionUpgradeManager.consumeActivationMessages(player.uniqueId)
         if (tokensEarned > 0L) {
             actionBarParts += "&b+${TextUtil.formatNum(tokensEarned)} tokens"
+        }
+        if (keysFound.isNotEmpty()) {
+            actionBarParts += keysFound.groupingBy { it }.eachCount()
+                .entries
+                .sortedBy { it.key.ordinal }
+                .joinToString(" &8| ") { (rarity, amount) ->
+                    "${rarity.color}+${TextUtil.formatNum(amount.toLong())} ${rarity.displayName.lowercase()} key"
+                }
         }
         if (actionBarParts.isNotEmpty()) {
             ActionBarManager.sendActionBarFor(player, 1.2, actionBarParts.joinToString(" &8| "))
@@ -227,36 +269,25 @@ class PickaxeListener : Listener {
         if (item.type != Material.DIAMOND_PICKAXE) return false
 
         val data = DataStore.get(player.uniqueId)
-        val multiBreakChance = UpgradeFormulas.getMultiBreakBlockQuantity(
-            data.multiBreakLevel,
-            ItemManager.isProcBooster(player.inventory.itemInOffHand),
-            data.multiBreakMaxLevel
-        )
-        val oreBoostChance = UpgradeFormulas.getOreBoostChance(data.oreBoostLevel, data.oreBoostMaxLevel, 0.0) * 100
-        val excavatorChance = UpgradeFormulas.getExcavatorChance(data.excavatorLevel, data.excavatorMaxLevel, 0.0) * 100
-        val expected = ItemManager.makePickaxe(
-            data.rebirth,
-            player.level,
-            data.fortuneLevel,
-            data.multiBreakLevel,
-            multiBreakChance,
-            data.oreBoostLevel,
-            oreBoostChance,
-            data.excavatorLevel,
-            excavatorChance
-        )
+        val expected = ItemManager.makePickaxe(data, player.level, ItemManager.isProcBooster(player.inventory.itemInOffHand))
         return item.itemMeta?.displayName() == expected.itemMeta?.displayName()
     }
 
     private fun triggerMineStrikeProcs(player: Player, data: PlayerData, yLevel: Int) {
-        val lightningChance = MineManager.applyProcMultiplier(
-            UpgradeFormulas.getLightningChance(
-                data.lightningLevel,
-                data.lightningMaxLevel,
-                ScrollManager.getBonus(data, UpgradeScrollType.LIGHTNING)
-            ) + MasteryManager.getActivationChanceBonus(data, "lightning"),
-            player
-        )
+        val procPowerBonus = UpgradeToggleManager.getProcPowerBonus(data)
+        val lightningChance = if (!UpgradeToggleManager.isEnabled(data, "lightning")) {
+            0.0
+        } else {
+            MineManager.applyProcMultiplier(
+                UpgradeFormulas.getLightningChance(
+                    data.lightningLevel,
+                    data.lightningMaxLevel,
+                    ScrollManager.getBonus(data, UpgradeScrollType.LIGHTNING)
+                ) + procPowerBonus +
+                    MasteryManager.getActivationChanceBonus(data, "lightning"),
+                player
+            )
+        }
 
         if (data.rebirth >= 1 && Random.nextDouble() <= lightningChance) {
             if (MineManager.triggerLightningUpgrade(player)) {
@@ -270,14 +301,19 @@ class PickaxeListener : Listener {
             }
         }
 
-        val virtualJackhammerChance = MineManager.applyProcMultiplier(
-            UpgradeFormulas.getVirtualJackhammerChance(
-                data.virtualJackhammerLevel,
-                data.virtualJackhammerMaxLevel,
-                ScrollManager.getBonus(data, UpgradeScrollType.VIRTUAL_JACKHAMMER)
-            ) + MasteryManager.getActivationChanceBonus(data, "virtualJackhammer"),
-            player
-        )
+        val virtualJackhammerChance = if (!UpgradeToggleManager.isEnabled(data, "virtualJackhammer")) {
+            0.0
+        } else {
+            MineManager.applyProcMultiplier(
+                UpgradeFormulas.getVirtualJackhammerChance(
+                    data.virtualJackhammerLevel,
+                    data.virtualJackhammerMaxLevel,
+                    ScrollManager.getBonus(data, UpgradeScrollType.VIRTUAL_JACKHAMMER)
+                ) + procPowerBonus +
+                    MasteryManager.getActivationChanceBonus(data, "virtualJackhammer"),
+                player
+            )
+        }
 
         if (data.rebirth >= 1 && Random.nextDouble() <= virtualJackhammerChance) {
             if (MineManager.triggerVirtualJackhammer(player, yLevel)) {

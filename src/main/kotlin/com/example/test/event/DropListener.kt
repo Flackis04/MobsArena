@@ -12,7 +12,7 @@ class DropListener : Listener {
         if (
             ItemManager.isPickaxe(item) ||
             ItemManager.isBackpack(item) ||
-            (!DataStore.get(event.player.uniqueId).hasEnabledPvp && KitManager.isRankArmorPiece(item))
+            (KitManager.isMineMode(event.player.location) && KitManager.isRankArmorPiece(item))
         ) {
             event.isCancelled = true
         }

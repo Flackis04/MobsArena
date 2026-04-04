@@ -172,7 +172,10 @@ object StorageManager {
     fun resolveSellMultiplier(player: Player): Double {
         val data = DataStore.get(player.uniqueId)
         val multiplier = KitManager.getEffectiveSellMultiplier(player) *
-            UpgradeFormulas.getSellMultiplier(data.sellMultiplierLevel, data.sellMultiplierMaxLevel)
+            UpgradeFormulas.getSellMultiplier(
+                UpgradeToggleManager.getEffectiveLevel(data, "sellMultiplier", data.sellMultiplierLevel),
+                data.sellMultiplierMaxLevel
+            )
         if (TutorialManager.isTutorialMode(player)) return multiplier
         return if (BossbarManager.hasActiveSellMultiplier()) multiplier * BossbarManager.multiplier else multiplier
     }
