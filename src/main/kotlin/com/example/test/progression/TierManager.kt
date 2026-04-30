@@ -46,22 +46,21 @@ object TierManager {
         tiers[21] = Tier("Stray", "<#435859>", "67,88,89", "stray spawn egg")
         tiers[22] = Tier("Creeper", "<#00FF00>", "50,255,50", "creeper spawn egg")
         tiers[23] = Tier("Phantom", "<#1E1E3F>", "30,30,63", "phantom spawn egg")
-        tiers[24] = Tier("Vindicator", "<#554f4d>", "85,79,77", "vindicator spawn egg")
-        tiers[25] = Tier("Ravager", "<#5C5C5C>", "92,92,92", "ravager spawn egg")
-        tiers[26] = Tier("Guardian", "<#517768>", "81,119,104", "guardian spawn egg")
-        tiers[27] = Tier("Piglin", "<#a3593b>", "163,89,59", "zombified piglin spawn egg")
-        tiers[28] = Tier("Ghast", "<#FFFFFF>", "255,255,255", "ghast spawn egg")
-        tiers[29] = Tier("Magma Cube", "<#320200>", "50,2,0", "magma cube spawn egg")
-        tiers[30] = Tier("Blaze", "<#FFB84D>", "255,184,77", "blaze spawn egg")
-        tiers[31] = Tier("Wither Skeleton", "<#1A1A1A>", "26,26,26", "wither skeleton spawn egg")
-        tiers[32] = Tier("Shulker", "<#8e668f>", "142,102,143", "shulker spawn egg")
-        tiers[33] = Tier("Enderman", "<#FF00FF>", "11,11,11", "enderman spawn egg")
-        tiers[34] = Tier("Iron Golem", "<#A59C94>", "165,156,148", "iron golem spawn egg")
-        tiers[35] = Tier("Elder Guardian", "<#404671>", "64,70,113", "elder guardian spawn egg")
-        tiers[36] = Tier("Warden", "<#031923>", "3,25,35", "warden spawn egg")
-        tiers[37] = Tier("Wither", "<#3e5e84>", "62,94,132", "wither spawn egg")
-        tiers[38] = Tier("Ender Dragon", "<#4B0082>", "75,0,130", "ender dragon spawn egg")
-        tiers[39] = Tier("Hero Brine", "<#ffffff>", "0,14,15", "stick")
+        tiers[24] = Tier("Ravager", "<#5C5C5C>", "92,92,92", "ravager spawn egg")
+        tiers[25] = Tier("Guardian", "<#517768>", "81,119,104", "guardian spawn egg")
+        tiers[26] = Tier("Piglin", "<#a3593b>", "163,89,59", "zombified piglin spawn egg")
+        tiers[27] = Tier("Ghast", "<#FFFFFF>", "255,255,255", "ghast spawn egg")
+        tiers[28] = Tier("Magma Cube", "<#320200>", "50,2,0", "magma cube spawn egg")
+        tiers[29] = Tier("Blaze", "<#FFB84D>", "255,184,77", "blaze spawn egg")
+        tiers[30] = Tier("Wither Skeleton", "<#1A1A1A>", "26,26,26", "wither skeleton spawn egg")
+        tiers[31] = Tier("Shulker", "<#8e668f>", "142,102,143", "shulker spawn egg")
+        tiers[32] = Tier("Enderman", "<#FF00FF>", "11,11,11", "enderman spawn egg")
+        tiers[33] = Tier("Iron Golem", "<#A59C94>", "165,156,148", "iron golem spawn egg")
+        tiers[34] = Tier("Elder Guardian", "<#404671>", "64,70,113", "elder guardian spawn egg")
+        tiers[35] = Tier("Warden", "<#031923>", "3,25,35", "warden spawn egg")
+        tiers[36] = Tier("Wither", "<#3e5e84>", "62,94,132", "wither spawn egg")
+        tiers[37] = Tier("Ender Dragon", "<#4B0082>", "75,0,130", "ender dragon spawn egg")
+        tiers[38] = Tier("Hero Brine", "<#ffffff>", "0,14,15", "stick")
 
         tierHeads[1] = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjFjM2FhMGQ1MzkyMDhiNDc5NzJiZjhlNzJmMDUwNWNkY2ZiOGQ3Nzk2YjJmY2Y4NTkxMWNlOTRmZDAxOTNkMCJ9fX0="
         tierHeads[2] = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMDE0MzNiZTI0MjM2NmFmMTI2ZGE0MzRiODczNWRmMWViNWIzY2IyY2VkZTM5MTQ1OTc0ZTljNDgzNjA3YmFjIn19fQ=="
@@ -86,22 +85,21 @@ object TierManager {
         tierHeads[21] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjU3YmYwN2IzODg0N2FjMzA5ZDMzZTMyYTZiZjNiZDYwODc0MGNiZDljZjUwMmRjMWQ2NzBjM2VhMjZmOWRmNiJ9fX0="
         tierHeads[22] = "minecraft:creeper_head"
         tierHeads[23] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWNiZmIzZTAzNzRiYzMwMzI0NDIzZTY0NDU2ZTJiYmFmMjliODMzODdhNDk1N2I3Y2U0MGM4MmMxM2MxNmYxZSJ9fX0="
-        tierHeads[24] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMWNiMDk0M2ExMzViNzIwZWMxOGFjMWZmZjUwNTQ0ZjAyOGI1Mjk3NDFmZDM1NTU5ZDIyMjFlNzY1NjdkMiJ9fX0="
-        tierHeads[25] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTQ3ZmQ3NzUxZWM4MDcwMTViNWEzYjIwMDZkZDBmMzA3ZmNlZTM0ZjNhZWQ3MmJhMThkY2UxZDA4N2Q3MGViZiJ9fX0="
-        tierHeads[26] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjE4NGZkZTliODY4ODBmNWIxZWNhNjgyYWE0NDJjN2QwNDdmYTM3Y2U0NDk2M2RiNmY2NGU3MzQ3NWRjOTU0ZSJ9fX0="
-        tierHeads[27] = "minecraft:piglin_head"
-        tierHeads[28] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzY4OGU2MTY0MmEwYjY4NjQzZjRiYTM2OTJmZTIwNjYyMmI0ZDlhN2QzOTY1YmEwYmUxMzI5YzIxMzJkIn19fQ=="
-        tierHeads[29] = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTFjOTdhMDZlZmRlMDRkMDAyODdiZjIwNDE2NDA0YWIyMTAzZTEwZjA4NjIzMDg3ZTFiMGMxMjY0YTFjMGYwYyJ9fX0="
-        tierHeads[30] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGY4NjYzMjBiNTVlOWYzM2I0YjI3OWZmNzkyMmZmYWE4MGMzZDM1ODE2OWNjYWJjZmI4ZDVhYTRiNjQ1OTRlNiJ9fX0="
-        tierHeads[31] = "minecraft:wither_skeleton_skull"
-        tierHeads[32] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGU4YzkzMzZlZDEzYjQ2OGYyNjdmZjgxMzJjMzdiNGEzMGM1MDNlNDViNDJkNjlmNWMzYmJhOWJiMjkyOTM5MiJ9fX0="
-        tierHeads[33] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWVkY2I0OTA4MjlmNTUyMmNmMzNjMzNmM2ZiZGViN2YxNzhhZWRhYWRlMjcwYTA5NThjOGE3OTI3MzhlNSJ9fX0="
-        tierHeads[34] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNmUyMGQ5OTJmMDg3N2MxMzI1OWZiYzYwYWVkNzY1NjgwNTE0YmZmZmY5NmQ0ZWI3YjcxOTE5NWE2OTY2NmM1NyJ9fX0="
-        tierHeads[35] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzIzZDU4ODU5YTFhYTIyYmYwZWY5NjZiYjI5NDVjYzM5NjJiYjRiZTVmZWQ0ZTM2OWU3ZjExMjg1NzM1MWYyMiJ9fX0="
-        tierHeads[36] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjk3OWFjZWUxYTkzZWM3MWE0ODZkN2I5NTVhNDY5M2UzMTNjNTA4OTlkZWJiNTMwMWIwNzJjNDBkZDUzZWVkMCJ9fX0="
-        tierHeads[37] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjFiZmM0YzNlYWU4Zjg1YTMyZGIwYzllYWZmZWI2ODZiZDViMWU1MGFkNzJiYWM4MTM2ZDk4OWJhMzQ4M2Q2NyJ9fX0="
-        tierHeads[38] = "minecraft:dragon_head"
-        tierHeads[39] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjZjODViZjExZjA5YTE0MzdkMDQwNGNlZjE2YzhiNWU0YWMxYmVjMmIzMDU5YWY1NjBkMGFlOGE5YzRhMjNhNSJ9fX0="
+        tierHeads[24] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTQ3ZmQ3NzUxZWM4MDcwMTViNWEzYjIwMDZkZDBmMzA3ZmNlZTM0ZjNhZWQ3MmJhMThkY2UxZDA4N2Q3MGViZiJ9fX0="
+        tierHeads[25] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjE4NGZkZTliODY4ODBmNWIxZWNhNjgyYWE0NDJjN2QwNDdmYTM3Y2U0NDk2M2RiNmY2NGU3MzQ3NWRjOTU0ZSJ9fX0="
+        tierHeads[26] = "minecraft:piglin_head"
+        tierHeads[27] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzY4OGU2MTY0MmEwYjY4NjQzZjRiYTM2OTJmZTIwNjYyMmI0ZDlhN2QzOTY1YmEwYmUxMzI5YzIxMzJkIn19fQ=="
+        tierHeads[28] = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTFjOTdhMDZlZmRlMDRkMDAyODdiZjIwNDE2NDA0YWIyMTAzZTEwZjA4NjIzMDg3ZTFiMGMxMjY0YTFjMGYwYyJ9fX0="
+        tierHeads[29] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGY4NjYzMjBiNTVlOWYzM2I0YjI3OWZmNzkyMmZmYWE4MGMzZDM1ODE2OWNjYWJjZmI4ZDVhYTRiNjQ1OTRlNiJ9fX0="
+        tierHeads[30] = "minecraft:wither_skeleton_skull"
+        tierHeads[31] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGU4YzkzMzZlZDEzYjQ2OGYyNjdmZjgxMzJjMzdiNGEzMGM1MDNlNDViNDJkNjlmNWMzYmJhOWJiMjkyOTM5MiJ9fX0="
+        tierHeads[32] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWVkY2I0OTA4MjlmNTUyMmNmMzNjMzNmM2ZiZGViN2YxNzhhZWRhYWRlMjcwYTA5NThjOGE3OTI3MzhlNSJ9fX0="
+        tierHeads[33] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNmUyMGQ5OTJmMDg3N2MxMzI1OWZiYzYwYWVkNzY1NjgwNTE0YmZmZmY5NmQ0ZWI3YjcxOTE5NWE2OTY2NmM1NyJ9fX0="
+        tierHeads[34] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzIzZDU4ODU5YTFhYTIyYmYwZWY5NjZiYjI5NDVjYzM5NjJiYjRiZTVmZWQ0ZTM2OWU3ZjExMjg1NzM1MWYyMiJ9fX0="
+        tierHeads[35] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjk3OWFjZWUxYTkzZWM3MWE0ODZkN2I5NTVhNDY5M2UzMTNjNTA4OTlkZWJiNTMwMWIwNzJjNDBkZDUzZWVkMCJ9fX0="
+        tierHeads[36] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjFiZmM0YzNlYWU4Zjg1YTMyZGIwYzllYWZmZWI2ODZiZDViMWU1MGFkNzJiYWM4MTM2ZDk4OWJhMzQ4M2Q2NyJ9fX0="
+        tierHeads[37] = "minecraft:dragon_head"
+        tierHeads[38] = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjZjODViZjExZjA5YTE0MzdkMDQwNGNlZjE2YzhiNWU0YWMxYmVjMmIzMDU5YWY1NjBkMGFlOGE5YzRhMjNhNSJ9fX0="
     }
 
     fun getTier(tier: Int): Tier? = tiers[tier]

@@ -30,7 +30,6 @@ class TestPlugin : JavaPlugin() {
         AutoMinerManager.init()
         LightningRodManager.init()
         DangerZoneCubeManager.init()
-        VindicatorManager.init()
         HeadHunterManager.init()
         SessionTimelineManager.init()
 
@@ -76,7 +75,6 @@ class TestPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(ScrollManager, plugin)
         server.pluginManager.registerEvents(SessionTimelineManager, plugin)
         server.pluginManager.registerEvents(LightningRodManager, plugin)
-        server.pluginManager.registerEvents(VindicatorManager, plugin)
 
         // Commands
         getCommand("baltop")?.setExecutor(BaltopCommand())
@@ -158,7 +156,6 @@ class TestPlugin : JavaPlugin() {
         BossbarManager.shutdown()
         DangerZoneCubeManager.shutdown()
         LightningRodManager.shutdown()
-        VindicatorManager.shutdown()
         RareOresEventManager.shutdown()
         DataStore.save()
         ClanManager.save()

@@ -11,7 +11,6 @@ import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.FoodLevelChangeEvent
 import org.bukkit.event.entity.PlayerDeathEvent
-import org.bukkit.entity.Vindicator
 import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.player.*
 import org.bukkit.inventory.ItemStack
@@ -341,27 +340,11 @@ class PlayerListener : Listener {
 
     @EventHandler
     fun onDamage(event: EntityDamageByEntityEvent) {
-        val playerVictim = event.entity as? Player
-        val vindicatorDamager = event.damager as? Vindicator
-        if (playerVictim != null && vindicatorDamager != null && VindicatorManager.isManaged(vindicatorDamager)) {
-            if (KitManager.isMineMode(playerVictim.location)) {
-                event.isCancelled = true
-                vindicatorDamager.target = null
-            }
-            return
-        }
-
         val attacker = when (val damager = event.damager) {
             is Player -> damager
             is org.bukkit.entity.Projectile -> damager.shooter as? Player
             else -> null
         } ?: return
-        if (event.entity is Vindicator) {
-            if (KitManager.isMineMode(attacker.location)) {
-                event.isCancelled = true
-            }
-            return
-        }
         val victim = event.entity as? Player ?: return
         if (
             attacker.location.y > 95.0 ||
